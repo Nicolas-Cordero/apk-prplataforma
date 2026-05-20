@@ -7,7 +7,7 @@ import 'package:test1/models/estudiante.dart';
 /// Capa de abstracción entre la app y la fuente de datos (JSON → API).
 /// Todos los cambios de backend se hacen SOLO aquí, sin tocar widgets.
 class EstudianteService {
-  static const String _estudiantesPath = 'assets/data/students.json';
+  static const String _estudiantesPath = 'assets/data/students_becarios.json';
 
   /// Carga un archivo JSON desde assets (maneja Map o List)
   static Future<dynamic> _cargarJson(String path) async {

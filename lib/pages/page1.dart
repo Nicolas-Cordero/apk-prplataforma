@@ -95,6 +95,7 @@ class _Page1State extends State<Page1> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final uploadBtnBg = isDark ? const Color(0xFF1F1F1F) : Colors.white;
     return Scaffold(
       body: Column(
         children: [
@@ -131,12 +132,12 @@ class _Page1State extends State<Page1> {
                 Row(
                   children: [
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -170,21 +171,22 @@ class _Page1State extends State<Page1> {
               children: [
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: uploadBtnBg,
                     foregroundColor: AppColors.misNotas,
                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     minimumSize: const Size.fromHeight(48),
+                    elevation: isDark ? 0 : 0,
                   ),
                   onPressed: _subirCertificado,
-                  icon: const Icon(Icons.upload_file),
+                  icon: Icon(Icons.upload_file, color: AppColors.misNotas),
                   label: const Text('Subir certificado de notas', style: TextStyle(fontSize: 14)),
                 ),
                 const SizedBox(height: 16),
                 if (_ramosPersistidos.isNotEmpty) ...[
                   const Text('Notas por ramo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ..._notas.map((n) => _buildNotaCard(n)).toList(),
+                  ..._notas.map((n) => _buildNotaCard(n)),
                 ],
               ],
             ),
@@ -196,13 +198,19 @@ class _Page1State extends State<Page1> {
 
   Widget _buildNotaCard(_NotaItem item) {
     final controller = TextEditingController(text: item.nota?.toString() ?? '');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF121212) : Colors.white;
+    final borderColor = isDark ? Colors.white12 : Colors.black12;
+    final primaryText = isDark ? Colors.white : Colors.black87;
+    final secondaryText = isDark ? Colors.white70 : Colors.grey.shade600;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,9 +218,9 @@ class _Page1State extends State<Page1> {
           Row(
             children: [
               Expanded(
-                child: Text(item.ramo, style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(item.ramo, style: TextStyle(fontWeight: FontWeight.bold, color: primaryText)),
               ),
-              Text('Intento ${item.intento}'),
+              Text('Intento ${item.intento}', style: TextStyle(color: secondaryText)),
             ],
           ),
           const SizedBox(height: 8),
@@ -222,7 +230,22 @@ class _Page1State extends State<Page1> {
                 child: TextField(
                   controller: controller,
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(hintText: 'Ingresa tu nota final'),
+                  style: TextStyle(color: primaryText),
+                  decoration: InputDecoration(
+                    hintText: 'Ingresa tu nota final',
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF0B0B0B) : Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

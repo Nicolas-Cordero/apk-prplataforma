@@ -48,18 +48,20 @@ class _CustomAppBarState extends State<CustomAppBar>
       _bellAnimationController.reverse();
     });
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const Page5()),
+      MaterialPageRoute(builder: (_) => const Page5Wrapper()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = widget.isDarkMode;
-    final theme = Theme.of(context);
-    final backgroundColor = theme.appBarTheme.backgroundColor ?? Colors.white;
+    // Usar el mismo fondo global definido en AppBackground
+    final lightBg = const Color.fromRGBO(255, 251, 242, 1);
+    final darkBg = const Color.fromRGBO(22, 20, 18, 1);
+    final backgroundColor = isDark ? darkBg : lightBg;
     final textColor = isDark ? Colors.white : Colors.black87;
     final iconColor = isDark ? Colors.white70 : Colors.grey[600];
-    final circleBackgroundColor = isDark ? Colors.grey[800] : Colors.grey[200];
+    final circleBackgroundColor = isDark ? darkBg.withValues(alpha: 0.6) : lightBg.withValues(alpha: 0.92);
 
     return AppBar(
       elevation: 0,

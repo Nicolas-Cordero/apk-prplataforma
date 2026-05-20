@@ -20,11 +20,14 @@ class CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+      final isDark = theme.brightness == Brightness.dark;
     
-    // Obtener el bottom padding del SafeArea (notch/home indicator del iPhone)
-    final bottomPadding = MediaQuery.of(context).viewPadding.bottom * 0.5;
-    final navBackgroundColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+      // Obtener el bottom padding del SafeArea (notch/home indicator del iPhone)
+      final bottomPadding = MediaQuery.of(context).viewPadding.bottom * 0.5;
+      // Usar mismo fondo global que AppBackground
+      final lightBg = const Color.fromRGBO(255, 251, 242, 1);
+      final darkBg = const Color.fromRGBO(22, 20, 18, 1);
+      final navBackgroundColor = isDark ? darkBg : lightBg;
 
     return Container(
       color: navBackgroundColor,
@@ -76,7 +79,7 @@ class CustomBottomNavBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: isSelected ? tabColor.withValues(alpha: 0.2) : Colors.transparent,
+                color: isSelected ? tabColor.withValues(alpha: 0.2) : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(

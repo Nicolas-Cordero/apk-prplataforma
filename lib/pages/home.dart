@@ -7,6 +7,7 @@ import 'package:test1/pages/page2.dart';
 import 'package:test1/pages/page3.dart';
 import 'package:test1/pages/page4.dart';
 import 'package:test1/widgets/custom_top_bar.dart';
+import 'package:test1/widgets/app_background.dart';
 import 'package:test1/services/contacto_emergencia_service.dart';
 import 'package:test1/services/estudiante_service.dart';
 import 'package:test1/services/notification_service.dart';
@@ -113,7 +114,7 @@ class _HomePageState extends State<HomePage> {
           onThemeToggle: _toggleTheme,
         ),
       ),
-      body: tabs[_selectedIndex].page,
+      body: AppBackground(child: tabs[_selectedIndex].page),
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,

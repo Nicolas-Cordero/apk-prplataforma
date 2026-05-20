@@ -68,7 +68,7 @@ class _Page3State extends State<Page3> {
   }
 
   Future<_BecariosData> _cargarBecarios() async {
-    final estudiantes = await _cargarLista('assets/data/students.json');
+    final estudiantes = await _cargarLista('assets/data/students_becarios.json');
     final carreras = await _cargarLista('assets/data/carreras.json');
     final universidades = await _cargarLista('assets/data/universidades.json');
     final liceoData = await _cargarMapa('assets/data/liceos.json');

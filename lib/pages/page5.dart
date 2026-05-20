@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:test1/models/app_notification.dart';
 import 'package:test1/services/notification_service.dart';
+import 'package:test1/widgets/app_background.dart';
 
 /// Página de notificaciones
 class Page5 extends StatefulWidget {
@@ -80,7 +81,6 @@ class _Page5State extends State<Page5> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notificaciones'),
@@ -179,5 +179,15 @@ class _Page5State extends State<Page5> {
         },
       ),
     );
+  }
+}
+
+/// Wrapper para mostrar Page5 dentro de `AppBackground` cuando se navega desde la barra superior
+class Page5Wrapper extends StatelessWidget {
+  const Page5Wrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBackground(child: const Page5());
   }
 }

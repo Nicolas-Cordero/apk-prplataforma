@@ -1,0 +1,116 @@
+[   
+    {
+    "rut_estudiante": "20.543.155-1",
+    "nombre": "Juan",
+    "apellido": "Perez",
+    "email": "juan@perez.com",
+    "telefono": "+56912345678",
+    "puntaje_paes": 750,
+    "generacion": 2025,
+    "rbd_liceo": "12345",
+    "promedios_media": {
+        "matematicas": 6.5,
+        "lenguaje": 6.0,
+        "ciencias": 6.8,
+        "historia": 6.2
+    },
+    "estado": "activo"
+
+    }
+    ,
+    {
+    "rut_estudiante": "20.345.155-2",
+    "nombre": "Roberto",
+    "apellido": "Torres",
+    "email": "roberto@torres.com",
+    "telefono": "+56987654321",
+    "puntaje_paes": 700,
+    "generacion": 2021,
+    "rbd_liceo": "12345",
+    "promedios_media": {
+        "matematicas": 6.0,
+        "lenguaje": 5.2,
+        "ciencias": 5.5,
+        "historia": 6.9
+    },
+    "estado": "activo"
+
+    }
+    ,
+    {
+    "rut_estudiante": "21.111.222-4",
+    "nombre": "Camila",
+    "apellido": "Rojas",
+    "email": "camila@rojas.com",
+    "telefono": "+56911223344",
+    "puntaje_paes": 720,
+    "generacion": 2023,
+    "rbd_liceo": "12345",
+    "promedios_media": {
+        "matematicas": 6.4,
+        "lenguaje": 6.1,
+        "ciencias": 6.0,
+        "historia": 6.3
+    },
+    "estado": "activo"
+
+    }
+    ,
+    {
+    "rut_estudiante": "20.777.888-3",
+    "nombre": "Matias",
+    "apellido": "Gonzalez",
+    "email": "matias@gonzalez.com",
+    "telefono": "+56922334455",
+    "puntaje_paes": 705,
+    "generacion": 2022,
+    "rbd_liceo": "99999",
+    "promedios_media": {
+        "matematicas": 5.8,
+        "lenguaje": 5.9,
+        "ciencias": 5.7,
+        "historia": 6.1
+    },
+    "estado": "activo"
+
+    }
+    ,
+    {
+    "rut_estudiante": "22.333.444-5",
+    "nombre": "Sofia",
+    "apellido": "Mendez",
+    "email": "sofia@mendez.com",
+    "telefono": "+56944556677",
+    "puntaje_paes": 690,
+    "generacion": 2024,
+    "rbd_liceo": "12345",
+    "promedios_media": {
+        "matematicas": 6.1,
+        "lenguaje": 6.0,
+        "ciencias": 6.2,
+        "historia": 6.3
+    },
+    "estado": "activo"
+
+    }
+    ,
+    {
+    "rut_estudiante": "22.555.666-7",
+    "nombre": "Diego",
+    "apellido": "Navarro",
+    "email": "diego@navarro.com",
+    "telefono": "+56966778899",
+    "puntaje_paes": 715,
+    "generacion": 2024,
+    "rbd_liceo": "12345",
+    "promedios_media": {
+        "matematicas": 6.0,
+        "lenguaje": 6.3,
+        "ciencias": 6.1,
+        "historia": 6.0
+    },
+    "estado": "activo"
+
+    }
+    
+]
