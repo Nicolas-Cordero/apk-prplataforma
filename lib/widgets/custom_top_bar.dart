@@ -26,7 +26,7 @@ class _CustomAppBarState extends State<CustomAppBar>
   void initState() {
     super.initState();
     _bellAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
     // Cargar datos del estudiante
@@ -60,21 +60,33 @@ class _CustomAppBarState extends State<CustomAppBar>
       backgroundColor: backgroundColor,
       leading: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: circleBackgroundColor,
-          ),
-          child: Center(
-            child: Text(
-              'CG',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.grey[700],
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+        child: FutureBuilder<Estudiante>(
+          future: _estudianteFuture,
+          builder: (context, snapshot) {
+            String iniciales = 'CG';
+            if (snapshot.hasData) {
+              final estudiante = snapshot.data!;
+              iniciales =
+                  '${estudiante.nombre[0]}${estudiante.apellido[0]}'
+                      .toUpperCase();
+            }
+            return Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: circleBackgroundColor,
               ),
-            ),
-          ),
+              child: Center(
+                child: Text(
+                  iniciales,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.grey[700],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
       title: FutureBuilder<Estudiante>(
@@ -168,7 +180,7 @@ class _CustomAppBarState extends State<CustomAppBar>
             backgroundColor: circleBackgroundColor,
             child: IconButton(
               icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 100),
                 transitionBuilder: (child, animation) {
                   return ScaleTransition(scale: animation, child: child);
                 },

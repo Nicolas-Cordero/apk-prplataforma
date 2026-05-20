@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 /// Define los temas de la aplicación (claro y oscuro)
 abstract class AppTheme {
   // Tema Claro
+  // Transición de tema más rápida
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
