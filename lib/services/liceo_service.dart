@@ -5,22 +5,22 @@ import 'package:flutter/services.dart';
 class Liceo {
   final String rbdLiceo;
   final String nombre;
-  final String ciudad;
-  final String region;
+  final String comuna;
+  final String especialidad;
 
   Liceo({
     required this.rbdLiceo,
     required this.nombre,
-    required this.ciudad,
-    required this.region,
+    required this.comuna,
+    required this.especialidad,
   });
 
   factory Liceo.fromJson(Map<String, dynamic> json) {
     return Liceo(
       rbdLiceo: json['rbd_liceo'] as String,
       nombre: json['nombre'] as String,
-      ciudad: json['ciudad'] as String,
-      region: json['region'] as String,
+      comuna: json['comuna'] as String,
+      especialidad: json['especialidad'] as String,
     );
   }
 }
@@ -50,9 +50,12 @@ class LiceoService {
     return _cargarLiceo();
   }
 
-  /// Obtiene el nombre del liceo
-  static Future<String> obtenerNombre() async {
+  /// Obtiene el liceo por su RBD (si coincide)
+  static Future<Liceo?> obtenerPorRbd(String rbd) async {
     final liceo = await _cargarLiceo();
-    return liceo.nombre;
+    if (liceo.rbdLiceo == rbd) {
+      return liceo;
+    }
+    return null;
   }
 }

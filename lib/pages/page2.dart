@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:test1/models/estudiante.dart';
+import 'package:test1/services/contacto_emergencia_service.dart';
 import 'package:test1/services/estudiante_service.dart';
 import 'package:test1/services/liceo_service.dart';
 import 'package:test1/widgets/page2_widgets.dart';
@@ -15,6 +17,12 @@ class Page2 extends StatefulWidget {
 
 class _Page2State extends State<Page2> {
   late Future<_ProfileData> _profileDataFuture;
+  final TextEditingController _telefonoEmergenciaController =
+      TextEditingController();
+  final TextEditingController _correoEmergenciaController =
+      TextEditingController();
+  bool _controllersReady = false;
+  bool _guardandoContacto = false;
 
   @override
   void initState() {
@@ -22,11 +30,81 @@ class _Page2State extends State<Page2> {
     _profileDataFuture = _cargarDatosCompletos();
   }
 
+  @override
+  void dispose() {
+    _telefonoEmergenciaController.dispose();
+    _correoEmergenciaController.dispose();
+    super.dispose();
+  }
+
   /// Carga datos del estudiante y el nombre del liceo
   Future<_ProfileData> _cargarDatosCompletos() async {
     final estudiante = await EstudianteService.obtenerEstudianteActual();
-    final nombreLiceo = await LiceoService.obtenerNombre();
-    return _ProfileData(estudiante, nombreLiceo);
+    final liceo = await LiceoService.obtenerPorRbd(estudiante.rbdLiceo);
+    final contacto = await ContactoEmergenciaService.obtenerPorRut(
+      estudiante.rutEstudiante,
+    );
+    return _ProfileData(estudiante, liceo, contacto);
+  }
+
+  void _inicializarContactos(ContactoEmergencia? contacto) {
+    if (_controllersReady) return;
+    _telefonoEmergenciaController.text =
+        _formatearTelefono(contacto?.telefono ?? '');
+    _correoEmergenciaController.text = contacto?.correo ?? '';
+    _controllersReady = true;
+  }
+
+  String _formatearTelefono(String telefono) {
+    final limpio = telefono.replaceAll(RegExp(r'\s+'), '');
+    if (limpio.isEmpty) return '';
+    if (limpio.startsWith('+') && limpio.length > 4) {
+      return '${limpio.substring(0, 4)} ${limpio.substring(4)}';
+    }
+    return limpio;
+  }
+
+  String _normalizarTelefono(String telefono) {
+    return telefono.replaceAll(RegExp(r'\s+'), '');
+  }
+
+  Future<void> _guardarContacto(String rutEstudiante) async {
+    if (_guardandoContacto) return;
+    setState(() {
+      _guardandoContacto = true;
+    });
+
+    try {
+      final telefono = _formatearTelefono(
+        _normalizarTelefono(_telefonoEmergenciaController.text),
+      );
+      final correo = _correoEmergenciaController.text.trim();
+
+      _telefonoEmergenciaController.text = telefono;
+      _correoEmergenciaController.text = correo;
+
+      await ContactoEmergenciaService.guardar(
+        rutEstudiante: rutEstudiante,
+        telefono: telefono,
+        correo: correo,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contactos de emergencia guardados')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al guardar: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _guardandoContacto = false;
+        });
+      }
+    }
   }
 
   @override
@@ -92,6 +170,7 @@ class _Page2State extends State<Page2> {
 
         final data = snapshot.data!;
         final estudiante = data.estudiante;
+        _inicializarContactos(data.contacto);
 
         return SingleChildScrollView(
           child: Padding(
@@ -120,19 +199,19 @@ class _Page2State extends State<Page2> {
                 ),
                 _buildPersonalDataSection(estudiante),
 
-                // Sección: Datos Académicos
+                // Sección: Contactos de emergencia
                 SectionTitle(
-                  title: 'Datos Académicos',
+                  title: 'Contactos de emergencia',
+                  color: AppColors.misNotas.withValues(alpha: 0.85),
+                ),
+                _buildEmergencyContactsSection(estudiante),
+
+                // Sección: Establecimiento de origen
+                SectionTitle(
+                  title: 'Establecimiento de origen',
                   color: const Color(0xFFE67E22),
                 ),
-                _buildAcademicDataSection(estudiante, data.nombreLiceo),
-
-                // Sección: Académico Detallado
-                SectionTitle(
-                  title: 'Desempeño Académico',
-                  color: const Color(0xFF8E44AD),
-                ),
-                _buildPerformanceSection(estudiante),
+                _buildEstablecimientoSection(estudiante, data.liceo),
 
                 const SizedBox(height: 24),
               ],
@@ -212,7 +291,7 @@ class _Page2State extends State<Page2> {
           PersonalDataTile(
             icon: Icons.phone,
             label: 'Teléfono',
-            value: estudiante.telefono,
+            value: _formatearTelefono(estudiante.telefono),
             iconColor: AppColors.yo,
           ),
         ],
@@ -220,11 +299,77 @@ class _Page2State extends State<Page2> {
     );
   }
 
-  /// Construye la sección de datos académicos
-  Widget _buildAcademicDataSection(
+  /// Construye la sección de contactos de emergencia
+  Widget _buildEmergencyContactsSection(Estudiante estudiante) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.misNotas.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.misNotas.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          EditableDataField(
+            icon: Icons.phone_in_talk,
+            label: 'Teléfono de emergencia',
+            hintText: 'Ingresar',
+            iconColor: AppColors.misNotas,
+            controller: _telefonoEmergenciaController,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
+            ],
+          ),
+          Divider(color: AppColors.misNotas.withValues(alpha: 0.2)),
+          EditableDataField(
+            icon: Icons.alternate_email,
+            label: 'Correo de emergencia',
+            hintText: 'Ingresar',
+            iconColor: AppColors.misNotas,
+            controller: _correoEmergenciaController,
+            keyboardType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: _guardandoContacto
+                  ? null
+                  : () => _guardarContacto(estudiante.rutEstudiante),
+              icon: _guardandoContacto
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save, size: 18),
+              label: Text(_guardandoContacto ? 'Guardando' : 'Guardar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.misNotas,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Construye la sección de establecimiento de origen
+  Widget _buildEstablecimientoSection(
     Estudiante estudiante,
-    String nombreLiceo,
+    Liceo? liceo,
   ) {
+    final nombreLiceo = liceo?.nombre ?? 'No disponible';
+    final comuna = liceo?.comuna ?? 'No disponible';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -244,114 +389,30 @@ class _Page2State extends State<Page2> {
             iconColor: const Color(0xFFE67E22),
           ),
           Divider(color: const Color(0xFFE67E22).withValues(alpha: 0.2)),
-          
+          PersonalDataTile(
+            icon: Icons.location_on,
+            label: 'Comuna',
+            value: comuna,
+            iconColor: const Color(0xFFE67E22),
+          ),
+          Divider(color: const Color(0xFFE67E22).withValues(alpha: 0.2)),
+          PersonalDataTile(
+            icon: Icons.code,
+            label: 'RBD Liceo',
+            value: estudiante.rbdLiceo,
+            iconColor: const Color(0xFFE67E22),
+          ),
         ],
       ),
     );
-  }
-
-  /// Construye la sección de desempeño académico (promedios por materia)
-  Widget _buildPerformanceSection(Estudiante estudiante) {
-    final asignaturas = estudiante.promediosMedia.entries.toList();
-
-    if (asignaturas.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-        ),
-        child: const Text('No hay datos de desempeño disponibles'),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF8E44AD).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF8E44AD).withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: List.generate(
-          asignaturas.length,
-          (index) {
-            final entry = asignaturas[index];
-            final nombreAsignatura =
-                _capitalizarPrimera(entry.key); // "matemáticas" → "Matemáticas"
-            final nota = entry.value;
-
-            // Determinar color basado en la nota
-            Color notaColor;
-            if (nota >= 6.5) {
-              notaColor = const Color(0xFF27AE60); // Verde
-            } else if (nota >= 5.0) {
-              notaColor = const Color(0xFFF39C12); // Naranja
-            } else {
-              notaColor = const Color(0xFFE74C3C); // Rojo
-            }
-
-            return Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      nombreAsignatura,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: notaColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        nota.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: notaColor,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (index < asignaturas.length - 1)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Divider(
-                      color: const Color(0xFF8E44AD).withValues(alpha: 0.2),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  /// Capitaliza la primera letra de una cadena
-  String _capitalizarPrimera(String texto) {
-    return texto.substring(0, 1).toUpperCase() + texto.substring(1);
   }
 }
 
 /// Clase auxiliar para agrupar datos que se cargan de forma asíncrona
 class _ProfileData {
   final Estudiante estudiante;
-  final String nombreLiceo;
+  final Liceo? liceo;
+  final ContactoEmergencia? contacto;
 
-  _ProfileData(this.estudiante, this.nombreLiceo);
+  _ProfileData(this.estudiante, this.liceo, this.contacto);
 }
