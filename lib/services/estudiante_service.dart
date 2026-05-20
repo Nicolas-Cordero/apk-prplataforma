@@ -9,28 +9,44 @@ import 'package:test1/models/estudiante.dart';
 class EstudianteService {
   static const String _estudiantesPath = 'assets/data/students.json';
 
-  /// Carga un archivo JSON desde assets
-  static Future<Map<String, dynamic>> _cargarJson(String path) async {
+  /// Carga un archivo JSON desde assets (maneja Map o List)
+  static Future<dynamic> _cargarJson(String path) async {
     try {
       final jsonString = await rootBundle.loadString(path);
-      return jsonDecode(jsonString) as Map<String, dynamic>;
+      return jsonDecode(jsonString);
     } catch (e) {
       throw Exception('Error al cargar $path: $e');
     }
   }
 
   /// Obtiene el estudiante actual (del usuario en sesión)
+  /// Retorna el primer estudiante de la lista
   /// En producción: GET /api/estudiantes/me
   static Future<Estudiante> obtenerEstudianteActual() async {
     final jsonData = await _cargarJson(_estudiantesPath);
-    return Estudiante.fromJson(jsonData);
+    if (jsonData is List && jsonData.isNotEmpty) {
+      return Estudiante.fromJson(jsonData[0] as Map<String, dynamic>);
+    }
+    if (jsonData is Map<String, dynamic>) {
+      return Estudiante.fromJson(jsonData);
+    }
+    throw Exception('Formato de estudiantes inválido');
   }
 
   /// Obtiene todos los estudiantes
   /// En producción: GET /api/estudiantes
   static Future<List<Estudiante>> obtenerTodos() async {
     final jsonData = await _cargarJson(_estudiantesPath);
-    return [Estudiante.fromJson(jsonData)];
+    if (jsonData is List) {
+      return jsonData
+          .whereType<Map<String, dynamic>>()
+          .map(Estudiante.fromJson)
+          .toList();
+    }
+    if (jsonData is Map<String, dynamic>) {
+      return [Estudiante.fromJson(jsonData)];
+    }
+    return [];
   }
 
   /// Actualiza datos del estudiante

@@ -9,11 +9,11 @@ import 'package:test1/models/usuario.dart';
 class UsuarioService {
   static const String _usuariosPath = 'assets/data/usuarios.json';
 
-  /// Carga un archivo JSON desde assets
-  static Future<Map<String, dynamic>> _cargarJson(String path) async {
+  /// Carga un archivo JSON desde assets (maneja Map o List)
+  static Future<dynamic> _cargarJson(String path) async {
     try {
       final jsonString = await rootBundle.loadString(path);
-      return jsonDecode(jsonString) as Map<String, dynamic>;
+      return jsonDecode(jsonString);
     } catch (e) {
       throw Exception('Error al cargar $path: $e');
     }
@@ -24,23 +24,42 @@ class UsuarioService {
   /// Retorna token JWT para guardar en SharedPreferences
   static Future<Usuario> autenticar(String rut, String contrasena) async {
     final jsonData = await _cargarJson(_usuariosPath);
-    final usuario = Usuario.fromJson(jsonData);
+    List<Map<String, dynamic>> usuarios = [];
 
-    if (usuario.rut != rut) {
+    if (jsonData is List) {
+      usuarios = jsonData.whereType<Map<String, dynamic>>().toList();
+    } else if (jsonData is Map<String, dynamic>) {
+      usuarios = [jsonData];
+    }
+
+    final usuario = usuarios.firstWhere(
+      (u) => u['rut'] == rut,
+      orElse: () => throw Exception('RUT o contraseña incorrectos'),
+    );
+
+    final usuarioObj = Usuario.fromJson(usuario);
+    if (usuarioObj.contrasena != contrasena) {
       throw Exception('RUT o contraseña incorrectos');
     }
 
     // En producción: guardar token en SharedPreferences
     // await _guardarToken(token);
 
-    return usuario;
+    return usuarioObj;
   }
 
   /// Obtiene el usuario actual (requiere sesión activa)
+  /// Retorna el primer usuario de la lista
   /// En producción: GET /api/usuarios/me con header Authorization
   static Future<Usuario> obtenerActual() async {
     final jsonData = await _cargarJson(_usuariosPath);
-    return Usuario.fromJson(jsonData);
+    if (jsonData is List && jsonData.isNotEmpty) {
+      return Usuario.fromJson(jsonData[0] as Map<String, dynamic>);
+    }
+    if (jsonData is Map<String, dynamic>) {
+      return Usuario.fromJson(jsonData);
+    }
+    throw Exception('Formato de usuarios inválido');
   }
 
   /// Actualiza perfil del usuario

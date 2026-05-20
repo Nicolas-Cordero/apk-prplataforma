@@ -1,11 +1,55 @@
-{
-
+[   
+    {
     "codigo_carrera": "CS101",
     "rut_estudiante": "20.543.155-1",
     "codigo_universidad": "UCN-COQ",
     "duracion_semestres": 10,
     "nombre": "Ingeniería Civil en Computación e Informática",
     "via_acceso": "PAES"
-
-
-}
+    }
+    ,
+    {
+    "codigo_carrera": "CS102",
+    "rut_estudiante": "20.345.155-2",
+    "codigo_universidad": "UCN-COQ",
+    "duracion_semestres": 11,
+    "nombre": "Ingeniería Aeroespacial",
+    "via_acceso": "PAES"
+    }
+    ,
+    {
+    "codigo_carrera": "CS101",
+    "rut_estudiante": "21.111.222-4",
+    "codigo_universidad": "UCN-COQ",
+    "duracion_semestres": 10,
+    "nombre": "Ingeniería Civil en Computación e Informática",
+    "via_acceso": "PAES"
+    }
+    ,
+    {
+    "codigo_carrera": "CS103",
+    "rut_estudiante": "20.777.888-3",
+    "codigo_universidad": "UCN-COQ",
+    "duracion_semestres": 10,
+    "nombre": "Ingeniería Comercial",
+    "via_acceso": "PAES"
+    }
+    ,
+    {
+    "codigo_carrera": "LS201",
+    "rut_estudiante": "22.333.444-5",
+    "codigo_universidad": "ULS-LS",
+    "duracion_semestres": 10,
+    "nombre": "Ingenieria en Construccion",
+    "via_acceso": "PAES"
+    }
+    ,
+    {
+    "codigo_carrera": "CS104",
+    "rut_estudiante": "22.555.666-7",
+    "codigo_universidad": "UCN-COQ",
+    "duracion_semestres": 10,
+    "nombre": "Ingenieria Industrial",
+    "via_acceso": "PAES"
+    }
+]

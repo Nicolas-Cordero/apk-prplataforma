@@ -1,0 +1,12 @@
+[
+  {
+    "codigo": "UCN-COQ",
+    "nombre": "Universidad Catolica del Norte",
+    "comuna": "Coquimbo"
+  },
+  {
+    "codigo": "ULS-LS",
+    "nombre": "Universidad de La Serena",
+    "comuna": "La Serena"
+  }
+]
