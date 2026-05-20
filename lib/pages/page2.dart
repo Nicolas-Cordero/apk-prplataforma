@@ -4,6 +4,7 @@ import 'package:test1/models/estudiante.dart';
 import 'package:test1/services/contacto_emergencia_service.dart';
 import 'package:test1/services/estudiante_service.dart';
 import 'package:test1/services/liceo_service.dart';
+import 'package:test1/services/notification_service.dart';
 import 'package:test1/widgets/page2_widgets.dart';
 import 'package:test1/constants/app_colors.dart';
 
@@ -23,11 +24,16 @@ class _Page2State extends State<Page2> {
       TextEditingController();
   bool _controllersReady = false;
   bool _guardandoContacto = false;
+    String _telefonoInicial = '';
+    String _correoInicial = '';
+    bool _mostrarGuardar = false;
 
   @override
   void initState() {
     super.initState();
     _profileDataFuture = _cargarDatosCompletos();
+    _telefonoEmergenciaController.addListener(_onContactoChange);
+    _correoEmergenciaController.addListener(_onContactoChange);
   }
 
   @override
@@ -49,10 +55,33 @@ class _Page2State extends State<Page2> {
 
   void _inicializarContactos(ContactoEmergencia? contacto) {
     if (_controllersReady) return;
+    _telefonoInicial = _normalizarTelefono(contacto?.telefono ?? '');
+    _correoInicial = (contacto?.correo ?? '').trim();
+
     _telefonoEmergenciaController.text =
-        _formatearTelefono(contacto?.telefono ?? '');
-    _correoEmergenciaController.text = contacto?.correo ?? '';
+        _formatearTelefono(_telefonoInicial);
+    _correoEmergenciaController.text = _correoInicial;
     _controllersReady = true;
+    _evaluarCambios();
+  }
+
+  void _onContactoChange() {
+    if (!_controllersReady) return;
+    _evaluarCambios();
+  }
+
+  void _evaluarCambios() {
+    final telefonoActual =
+        _normalizarTelefono(_telefonoEmergenciaController.text);
+    final correoActual = _correoEmergenciaController.text.trim();
+    final hayCambios =
+        telefonoActual != _telefonoInicial || correoActual != _correoInicial;
+
+    if (hayCambios != _mostrarGuardar) {
+      setState(() {
+        _mostrarGuardar = hayCambios;
+      });
+    }
   }
 
   String _formatearTelefono(String telefono) {
@@ -75,10 +104,18 @@ class _Page2State extends State<Page2> {
     });
 
     try {
+      final teniaTelefono = _telefonoInicial.isNotEmpty;
+      final teniaCorreo = _correoInicial.isNotEmpty;
+
       final telefono = _formatearTelefono(
         _normalizarTelefono(_telefonoEmergenciaController.text),
       );
       final correo = _correoEmergenciaController.text.trim();
+
+      final telefonoNormalizado = _normalizarTelefono(telefono);
+      final correoNormalizado = correo.trim();
+      final ahoraTieneTelefono = telefonoNormalizado.isNotEmpty;
+      final ahoraTieneCorreo = correoNormalizado.isNotEmpty;
 
       _telefonoEmergenciaController.text = telefono;
       _correoEmergenciaController.text = correo;
@@ -88,6 +125,37 @@ class _Page2State extends State<Page2> {
         telefono: telefono,
         correo: correo,
       );
+
+      if (ahoraTieneTelefono || ahoraTieneCorreo) {
+        await NotificationService.eliminarPorCodigo(
+          'missing_emergency_contacts',
+        );
+      }
+
+      if (!teniaTelefono && !teniaCorreo && ahoraTieneTelefono && ahoraTieneCorreo) {
+        await NotificationService.agregarSiNoExiste(
+          code: 'emergency_contacts_created',
+          title: 'Contactos de emergencia',
+          body: 'Has registrado tus contactos de emergencia',
+          type: 'success',
+          iconKey: 'emergency_contacts',
+        );
+      } else {
+        final cambioTelefono = telefonoNormalizado != _telefonoInicial;
+        final cambioCorreo = correoNormalizado != _correoInicial;
+        if (cambioTelefono || cambioCorreo) {
+          await NotificationService.agregar(
+            title: 'Contactos de emergencia',
+            body: 'Has actualizado tus contactos de emergencia',
+            type: 'info',
+            iconKey: 'emergency_contacts',
+          );
+        }
+      }
+
+      _telefonoInicial = telefonoNormalizado;
+      _correoInicial = correoNormalizado;
+      _mostrarGuardar = false;
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -211,7 +279,7 @@ class _Page2State extends State<Page2> {
                   title: 'Establecimiento de origen',
                   color: const Color(0xFFE67E22),
                 ),
-                _buildEstablecimientoSection(estudiante, data.liceo),
+                _buildEstablecimientoSection(data.liceo),
 
                 const SizedBox(height: 24),
               ],
@@ -334,29 +402,45 @@ class _Page2State extends State<Page2> {
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: _guardandoContacto
-                  ? null
-                  : () => _guardarContacto(estudiante.rutEstudiante),
-              icon: _guardandoContacto
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save, size: 18),
-              label: Text(_guardandoContacto ? 'Guardando' : 'Guardar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.misNotas,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, animation) {
+              return SizeTransition(
+                sizeFactor: animation,
+                axisAlignment: -1,
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
+            child: _mostrarGuardar
+                ? Align(
+                    key: const ValueKey('guardar'),
+                    alignment: Alignment.centerLeft,
+                    child: ElevatedButton.icon(
+                      onPressed: _guardandoContacto
+                          ? null
+                          : () => _guardarContacto(estudiante.rutEstudiante),
+                      icon: _guardandoContacto
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save, size: 18),
+                      label: Text(_guardandoContacto ? 'Guardando' : 'Guardar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.misNotas,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('oculto')),
           ),
         ],
       ),
@@ -364,10 +448,7 @@ class _Page2State extends State<Page2> {
   }
 
   /// Construye la sección de establecimiento de origen
-  Widget _buildEstablecimientoSection(
-    Estudiante estudiante,
-    Liceo? liceo,
-  ) {
+  Widget _buildEstablecimientoSection(Liceo? liceo) {
     final nombreLiceo = liceo?.nombre ?? 'No disponible';
     final comuna = liceo?.comuna ?? 'No disponible';
     return Container(
@@ -393,13 +474,6 @@ class _Page2State extends State<Page2> {
             icon: Icons.location_on,
             label: 'Comuna',
             value: comuna,
-            iconColor: const Color(0xFFE67E22),
-          ),
-          Divider(color: const Color(0xFFE67E22).withValues(alpha: 0.2)),
-          PersonalDataTile(
-            icon: Icons.code,
-            label: 'RBD Liceo',
-            value: estudiante.rbdLiceo,
             iconColor: const Color(0xFFE67E22),
           ),
         ],

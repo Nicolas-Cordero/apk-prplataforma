@@ -7,6 +7,9 @@ import 'package:test1/pages/page2.dart';
 import 'package:test1/pages/page3.dart';
 import 'package:test1/pages/page4.dart';
 import 'package:test1/widgets/custom_top_bar.dart';
+import 'package:test1/services/contacto_emergencia_service.dart';
+import 'package:test1/services/estudiante_service.dart';
+import 'package:test1/services/notification_service.dart';
 import 'package:test1/widgets/custom_bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
@@ -60,6 +63,36 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _verificarContactosEmergencia();
+  }
+
+  Future<void> _verificarContactosEmergencia() async {
+    try {
+      final estudiante = await EstudianteService.obtenerEstudianteActual();
+      final contacto = await ContactoEmergenciaService.obtenerPorRut(
+        estudiante.rutEstudiante,
+      );
+
+      final tieneTelefono = (contacto?.telefono.trim().isNotEmpty ?? false);
+      final tieneCorreo = (contacto?.correo.trim().isNotEmpty ?? false);
+
+      if (!tieneTelefono && !tieneCorreo) {
+        await NotificationService.agregarSiNoExiste(
+          code: 'missing_emergency_contacts',
+          title: 'Contactos de emergencia',
+          body: 'Por favor, ingresa información de Contactos de Emergencia',
+          type: 'warning',
+          iconKey: 'emergency_contacts',
+        );
+      }
+    } catch (_) {
+      // No interrumpir la carga por fallos en notificaciones
+    }
   }
 
   void _toggleTheme() {

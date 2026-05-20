@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:test1/models/estudiante.dart';
 import 'package:test1/services/estudiante_service.dart';
+import 'package:test1/pages/page5.dart';
 
 /// Widget personalizado para la barra superior de la aplicación
 class CustomAppBar extends StatefulWidget {
@@ -44,6 +45,9 @@ class _CustomAppBarState extends State<CustomAppBar>
     _bellAnimationController.forward().then((_) {
       _bellAnimationController.reverse();
     });
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const Page5()),
+    );
   }
 
   @override

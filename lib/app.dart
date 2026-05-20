@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:test1/themes/app_theme.dart';
 import 'package:test1/pages/home.dart';
+import 'package:test1/services/notification_service.dart';
 
 /// Widget que maneja el estado global del tema de la aplicación
 class MyApp extends StatefulWidget {
@@ -12,6 +13,12 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _isDarkMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.solicitarPermisos();
+  }
 
   @override
   Widget build(BuildContext context) {
