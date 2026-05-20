@@ -19,25 +19,29 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Obtener el bottom padding del SafeArea 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    // Obtener el bottom padding del SafeArea (notch/home indicator del iPhone)
     final bottomPadding = MediaQuery.of(context).viewPadding.bottom * 0.5;
+    final navBackgroundColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return Container(
-      color: Colors.white,
+      color: navBackgroundColor,
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Navbar con burbujas e indicador superior
           Container(
-            color: Colors.white,
+            color: navBackgroundColor,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(
                 icons.length,
                 (index) => Flexible(
-                  child: _buildNavItem(index),
+                  child: _buildNavItem(index, isDark),
                 ),
               ),
             ),
@@ -47,7 +51,7 @@ class CustomBottomNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(int index) {
+  Widget _buildNavItem(int index, bool isDark) {
     bool isSelected = index == currentIndex;
     Color tabColor = colors[index];
 
@@ -72,12 +76,12 @@ class CustomBottomNavBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: isSelected ? tabColor.withOpacity(0.2) : Colors.transparent,
+              color: isSelected ? tabColor.withValues(alpha: 0.2) : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
               icons[index],
-              color: isSelected ? tabColor : Colors.grey[400],
+              color: isSelected ? tabColor : (isDark ? Colors.grey[500] : Colors.grey[400]),
               size: 22,
             ),
           ),
@@ -92,7 +96,7 @@ class CustomBottomNavBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 10,
-                color: isSelected ? tabColor : Colors.grey[400],
+                color: isSelected ? tabColor : (isDark ? Colors.grey[500] : Colors.grey[400]),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),

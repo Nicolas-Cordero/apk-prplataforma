@@ -1,0 +1,18 @@
+{
+    "rut_estudiante": "12.432.188-7",
+    "nombre": "Juan",
+    "apellido": "Perez",
+    "email": "juan@perez.com",
+    "telefono": "+56912345678",
+    "puntaje_paes": 750,
+    "generacion": 2025,
+    "rbd_liceo": "12345",
+    "promedios_media": {
+        "matematicas": 6.5,
+        "lenguaje": 6.0,
+        "ciencias": 6.8,
+        "historia": 6.2
+    },
+    "estado": "activo"
+
+}

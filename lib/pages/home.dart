@@ -6,10 +6,13 @@ import 'package:test1/pages/page1.dart';
 import 'package:test1/pages/page2.dart';
 import 'package:test1/pages/page3.dart';
 import 'package:test1/pages/page4.dart';
+import 'package:test1/widgets/custom_top_bar.dart';
 import 'package:test1/widgets/custom_bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final Function(bool)? onThemeChanged;
+
+  const HomePage({super.key, this.onThemeChanged});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -17,6 +20,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 2; // Pestaña "Yo" por defecto
+  bool _isDarkMode = false; // Estado local del tema
 
   /// Define todas las pestañas de navegación
   late final List<TabItem> tabs = [
@@ -58,9 +62,24 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _toggleTheme() {
+    setState(() {
+      _isDarkMode = !_isDarkMode;
+    });
+    // Notificar al widget padre para que cambie el tema global
+    widget.onThemeChanged?.call(_isDarkMode);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: CustomAppBar(
+          isDarkMode: _isDarkMode,
+          onThemeToggle: _toggleTheme,
+        ),
+      ),
       body: tabs[_selectedIndex].page,
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _selectedIndex,
