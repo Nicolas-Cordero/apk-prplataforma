@@ -244,12 +244,7 @@ class _Page2State extends State<Page2> {
             iconColor: const Color(0xFFE67E22),
           ),
           Divider(color: const Color(0xFFE67E22).withValues(alpha: 0.2)),
-          PersonalDataTile(
-            icon: Icons.code,
-            label: 'RBD Liceo',
-            value: estudiante.rbdLiceo,
-            iconColor: const Color(0xFFE67E22),
-          ),
+          
         ],
       ),
     );

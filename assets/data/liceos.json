@@ -1,6 +1,6 @@
 {
   "rbd_liceo": "12345",
-  "nombre": "Liceo Francisco Antonio Encina",
-  "ciudad": "Santiago",
-  "region": "Metropolitana"
+  "nombre": "Liceo Diego Portales",
+  "comuna": "Coquimbo",
+  "especialidad": "Científico-Humanista"
 }
