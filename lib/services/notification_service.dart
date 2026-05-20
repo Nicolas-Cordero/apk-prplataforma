@@ -21,6 +21,7 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static final ValueNotifier<int> contador = ValueNotifier<int>(0);
 
   static Future<void> inicializar() async {
     if (_initialized || kIsWeb) return;
@@ -98,6 +99,16 @@ class NotificationService {
     final file = await _localFile();
     final data = items.map((item) => item.toJson()).toList();
     await file.writeAsString(const JsonEncoder.withIndent('  ').convert(data));
+    _actualizarContadorConLista(items);
+  }
+
+  static void _actualizarContadorConLista(List<AppNotification> items) {
+    contador.value = items.length;
+  }
+
+  static Future<void> refrescarContador() async {
+    final items = await _leerLista();
+    _actualizarContadorConLista(items);
   }
 
   static int _colorPorIconKey(String? iconKey) {
@@ -167,6 +178,7 @@ class NotificationService {
   static Future<List<AppNotification>> obtenerTodas() async {
     final items = await _leerLista();
     items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _actualizarContadorConLista(items);
     return items;
   }
 

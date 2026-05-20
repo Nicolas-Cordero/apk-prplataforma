@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:test1/constants/app_colors.dart';
 import 'package:test1/services/notification_service.dart';
+import 'package:test1/services/ramo_service.dart';
 
 /// Página 0: Mis Ramos
 class Page0 extends StatefulWidget {
@@ -11,7 +12,7 @@ class Page0 extends StatefulWidget {
 }
 
 class _Page0State extends State<Page0> {
-  final List<_RamoItem> _ramos = [];
+  final List<Ramo> _ramos = [];
   final String _semestreActual = '2025-2';
 
   final TextEditingController _nombreController = TextEditingController();
@@ -23,6 +24,20 @@ class _Page0State extends State<Page0> {
     _nombreController.dispose();
     _creditosController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRamos();
+  }
+
+  Future<void> _loadRamos() async {
+    final loaded = await RamoService.leerRamos();
+    setState(() {
+      _ramos.clear();
+      _ramos.addAll(loaded);
+    });
   }
 
   void _abrirFormularioRamo({int? index}) {
@@ -141,7 +156,8 @@ class _Page0State extends State<Page0> {
     if (nombre.isEmpty || creditos <= 0) return;
 
     setState(() {
-      final nuevo = _RamoItem(
+      final nuevo = Ramo(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         nombre: nombre,
         intento: _intentoSeleccionado,
         creditos: creditos,
@@ -153,15 +169,16 @@ class _Page0State extends State<Page0> {
       }
     });
 
+    // disparar notificación (no await para evitar usar context tras espera)
     if (index == null) {
-      await NotificationService.agregar(
+      NotificationService.agregar(
         title: 'Ramo agregado',
         body: 'Agregaste $nombre (intento $_intentoSeleccionado).',
         type: 'info',
         iconKey: 'mis_ramos',
       );
     } else {
-      await NotificationService.agregar(
+      NotificationService.agregar(
         title: 'Ramo modificado',
         body: 'Modificaste $nombre (intento $_intentoSeleccionado).',
         type: 'info',
@@ -170,6 +187,8 @@ class _Page0State extends State<Page0> {
     }
 
     Navigator.pop(context);
+    // persistir en background
+    await RamoService.guardarRamos(_ramos);
   }
 
   @override
@@ -293,7 +312,7 @@ class _Page0State extends State<Page0> {
     );
   }
 
-  Widget _buildRamoCard(_RamoItem item, bool isDark, int index) {
+  Widget _buildRamoCard(Ramo item, bool isDark, int index) {
     final cardColor = isDark ? const Color(0xFF1D1D1D) : Colors.white;
     final borderColor = isDark ? Colors.white12 : Colors.black12;
 
@@ -490,14 +509,4 @@ class _Page0State extends State<Page0> {
   }
 }
 
-class _RamoItem {
-  final String nombre;
-  final int intento;
-  final int creditos;
-
-  const _RamoItem({
-    required this.nombre,
-    required this.intento,
-    required this.creditos,
-  });
-}
+// _RamoItem replaced by Ramo model in ramo_service.dart

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:test1/models/estudiante.dart';
 import 'package:test1/services/estudiante_service.dart';
 import 'package:test1/pages/page5.dart';
+import 'package:test1/services/notification_service.dart';
 
 /// Widget personalizado para la barra superior de la aplicación
 class CustomAppBar extends StatefulWidget {
@@ -32,6 +33,7 @@ class _CustomAppBarState extends State<CustomAppBar>
     );
     // Cargar datos del estudiante
     _estudianteFuture = EstudianteService.obtenerEstudianteActual();
+    NotificationService.refrescarContador();
   }
 
   @override
@@ -203,22 +205,59 @@ class _CustomAppBarState extends State<CustomAppBar>
         // Botón de notificaciones (campana)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: CircleAvatar(
-            backgroundColor: circleBackgroundColor,
-            child: RotationTransition(
-              turns: Tween(begin: 0.0, end: 0.1)
-                  .animate(_bellAnimationController),
-              alignment: Alignment.topCenter,
-              child: IconButton(
-                icon: Icon(
-                  Icons.notifications_outlined,
-                  color: iconColor,
-                  size: 20,
-                ),
-                onPressed: _onBellTap,
-                tooltip: 'Notificaciones',
-              ),
-            ),
+          child: ValueListenableBuilder<int>(
+            valueListenable: NotificationService.contador,
+            builder: (context, count, _) {
+              final badgeText = count > 99 ? '99+' : '$count';
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: circleBackgroundColor,
+                    child: RotationTransition(
+                      turns: Tween(begin: 0.0, end: 0.1)
+                          .animate(_bellAnimationController),
+                      alignment: Alignment.topCenter,
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.notifications_outlined,
+                          color: iconColor,
+                          size: 20,
+                        ),
+                        onPressed: _onBellTap,
+                        tooltip: 'Notificaciones',
+                      ),
+                    ),
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white, width: 1),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18),
+                        child: Text(
+                          badgeText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(width: 8),

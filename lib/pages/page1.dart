@@ -1,24 +1,255 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:test1/constants/app_colors.dart';
+import 'package:test1/services/notification_service.dart';
+import 'package:test1/services/ramo_service.dart';
 
 /// Página 1: Mis Notas
-class Page1 extends StatelessWidget {
+class Page1 extends StatefulWidget {
   const Page1({super.key});
 
   @override
+  State<Page1> createState() => _Page1State();
+}
+
+class _Page1State extends State<Page1> {
+  int _ramosTotales = 0;
+  final List<_NotaItem> _notas = [];
+  List<Ramo> _ramosPersistidos = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersistedRamos();
+  }
+
+  Future<void> _loadPersistedRamos() async {
+    try {
+      final loaded = await RamoService.leerRamos();
+      setState(() {
+        _ramosPersistidos = loaded;
+        // inicializar notas con ramos existentes si aún no hay notas
+        if (_notas.isEmpty && _ramosPersistidos.isNotEmpty) {
+          for (final r in _ramosPersistidos) {
+            _notas.add(_NotaItem(ramo: r.nombre, intento: r.intento));
+          }
+          _ramosTotales = _ramosPersistidos.length;
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _subirCertificado() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
+    if (result == null) return;
+    final file = File(result.files.single.path!);
+
+    // Guardar copia en carpeta local assets/data/uploads (temporal)
+    final dir = Directory('${Directory.systemTemp.path}/test1/uploads');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    final dest = File('${dir.path}/${result.files.single.name}');
+    await dest.writeAsBytes(await file.readAsBytes());
+
+    await NotificationService.agregar(
+      title: 'Certificado subido',
+      body: 'Subiste ${result.files.single.name}',
+      type: 'info',
+      iconKey: 'mis_notas',
+    );
+  }
+
+  void _agregarNota(_NotaItem item) async {
+    setState(() {
+      _notas.add(item);
+      _ramosTotales = _ramosTotales < _notas.length ? _notas.length : _ramosTotales;
+    });
+    await NotificationService.agregar(
+      title: 'Nota registrada',
+      body: 'Ingresaste nota para ${item.ramo} (intento ${item.intento})',
+      type: 'info',
+      iconKey: 'mis_notas',
+    );
+  }
+
+  void _modificarNota(int index, double nuevaNota) async {
+    setState(() {
+      _notas[index] = _NotaItem(
+        ramo: _notas[index].ramo,
+        intento: _notas[index].intento,
+        nota: nuevaNota,
+      );
+    });
+    await NotificationService.agregar(
+      title: 'Nota modificada',
+      body: 'Has actualizado la nota de ${_notas[index].ramo}',
+      type: 'info',
+      iconKey: 'mis_notas',
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      body: Column(
         children: [
-          Icon(Icons.assignment, size: 80, color: AppColors.misNotas),
-          const SizedBox(height: 20),
-          const Text(
-            'Mis Notas',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            decoration: BoxDecoration(
+              color: AppColors.misNotas,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(22),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Semestre 2025-2',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Mis Notas',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Notas ingresadas',
+                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${_notas.length} de $_ramosTotales',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.misNotas,
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  onPressed: _subirCertificado,
+                  icon: const Icon(Icons.upload_file),
+                  label: const Text('Subir certificado de notas', style: TextStyle(fontSize: 14)),
+                ),
+                const SizedBox(height: 16),
+                if (_ramosPersistidos.isNotEmpty) ...[
+                  const Text('Notas por ramo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ..._notas.map((n) => _buildNotaCard(n)).toList(),
+                ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildNotaCard(_NotaItem item) {
+    final controller = TextEditingController(text: item.nota?.toString() ?? '');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(item.ramo, style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              Text('Intento ${item.intento}'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(hintText: 'Ingresa tu nota final'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  final n = double.tryParse(controller.text.trim()) ?? 0.0;
+                  final index = _notas.indexOf(item);
+                  if (index >= 0) _modificarNota(index, n);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.misNotas,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Guardar'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotaItem {
+  final String ramo;
+  final int intento;
+  final double? nota;
+
+  const _NotaItem({required this.ramo, required this.intento, this.nota});
 }
