@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:test1/constants/app_colors.dart';
 import 'package:test1/services/notification_service.dart';
 import 'package:test1/services/ramo_service.dart';
+import 'package:test1/services/semestre_service.dart';
 
 /// Página 0: Mis Ramos
 class Page0 extends StatefulWidget {
@@ -13,23 +14,46 @@ class Page0 extends StatefulWidget {
 
 class _Page0State extends State<Page0> {
   final List<Ramo> _ramos = [];
-  final String _semestreActual = '2025-2';
+  List<Semestre> _semestres = [];
+  Semestre _semestreActual = Semestre(
+    id: 'SEM-2025-2',
+    nombre: '2025-2',
+    anio: 2025,
+    numeroSemestre: 2,
+    esActual: true,
+  );
+  Semestre _semestreSeleccionado = Semestre(
+    id: 'SEM-2025-2',
+    nombre: '2025-2',
+    anio: 2025,
+    numeroSemestre: 2,
+    esActual: true,
+  );
 
   final TextEditingController _nombreController = TextEditingController();
-  final TextEditingController _creditosController = TextEditingController();
   int _intentoSeleccionado = 1;
 
   @override
   void dispose() {
     _nombreController.dispose();
-    _creditosController.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _loadRamos();
+    _cargarSemestres();
+  }
+
+  Future<void> _cargarSemestres() async {
+    final semestreActual = await SemestreService.obtenerSemestreActual();
+    final semestres = await SemestreService.obtenerTodosSemestres();
+    setState(() {
+      _semestreActual = semestreActual;
+      _semestres = semestres;
+      _semestreSeleccionado = semestreActual;
+    });
+    await _loadRamos();
   }
 
   Future<void> _loadRamos() async {
@@ -44,11 +68,9 @@ class _Page0State extends State<Page0> {
     if (index != null) {
       final item = _ramos[index];
       _nombreController.text = item.nombre;
-      _creditosController.text = item.creditos.toString();
       _intentoSeleccionado = item.intento;
     } else {
       _nombreController.clear();
-      _creditosController.clear();
       _intentoSeleccionado = 1;
     }
 
@@ -97,35 +119,9 @@ class _Page0State extends State<Page0> {
                 keyboardType: TextInputType.text,
               ),
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInputLabel('Intento'),
-                        const SizedBox(height: 6),
-                        _buildDropdownField(),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInputLabel('Creditos'),
-                        const SizedBox(height: 6),
-                        _buildTextField(
-                          controller: _creditosController,
-                          hintText: 'Ej: 6',
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              _buildInputLabel('Intento'),
+              const SizedBox(height: 6),
+              _buildDropdownField(),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -152,15 +148,14 @@ class _Page0State extends State<Page0> {
 
   Future<void> _guardarRamo({int? index}) async {
     final nombre = _nombreController.text.trim();
-    final creditos = int.tryParse(_creditosController.text.trim()) ?? 0;
-    if (nombre.isEmpty || creditos <= 0) return;
+    if (nombre.isEmpty) return;
 
     setState(() {
       final nuevo = Ramo(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         nombre: nombre,
         intento: _intentoSeleccionado,
-        creditos: creditos,
+        semestreId: _semestreSeleccionado.id,
       );
       if (index == null) {
         _ramos.add(nuevo);
@@ -195,28 +190,35 @@ class _Page0State extends State<Page0> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Filtrar ramos del semestre seleccionado
+    final ramosSemestre = _ramos
+        .where((ramo) => ramo.semestreId == _semestreSeleccionado.id)
+        .toList();
+    
+    final puedeAgregar = _semestreSeleccionado.esActual;
+
     return Column(
       children: [
         _buildHeader(),
         const SizedBox(height: 12),
-        _buildSectionHeader(),
+        _buildSemesterSelector(),
         const SizedBox(height: 12),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            itemCount: _ramos.length + 1,
+            itemCount: ramosSemestre.length + (puedeAgregar ? 1 : 0),
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              if (index == _ramos.length) {
+              if (index == ramosSemestre.length) {
                 return Column(
                   children: [
-                    if (_ramos.isNotEmpty) _buildListDivider(isDark),
+                    if (ramosSemestre.isNotEmpty) _buildListDivider(isDark),
                     const SizedBox(height: 12),
                     _buildAgregarRamoCard(isDark),
                   ],
                 );
               }
-              return _buildRamoCard(_ramos[index], isDark, index);
+              return _buildRamoCard(ramosSemestre[index], isDark, index);
             },
           ),
         ),
@@ -250,7 +252,7 @@ class _Page0State extends State<Page0> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _semestreActual,
+                  _semestreActual.nombre,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -280,7 +282,7 @@ class _Page0State extends State<Page0> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${_ramos.length}',
+                  '${_ramos.where((r) => r.semestreId == _semestreActual.id).length}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -295,19 +297,58 @@ class _Page0State extends State<Page0> {
     );
   }
 
-  Widget _buildSectionHeader() {
+  Widget _buildSemesterSelector() {
+    if (_semestres.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          const Text(
-            'Mis Ramos',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+      child: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.5,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black12),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _semestreSeleccionado.id,
+              isExpanded: true,
+              alignment: Alignment.center,
+              icon: const Icon(Icons.keyboard_arrow_down),
+              selectedItemBuilder: (context) {
+                return _semestres.map((semestre) {
+                  return Center(
+                    child: Text(
+                      'Semestre: ${semestre.nombre}',
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList();
+              },
+              items: _semestres.map((semestre) {
+                return DropdownMenuItem(
+                  value: semestre.id,
+                  child: Text(
+                    'Semestre: ${semestre.nombre}',
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _semestreSeleccionado = _semestres.firstWhere(
+                    (s) => s.id == value,
+                  );
+                });
+              },
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -357,7 +398,7 @@ class _Page0State extends State<Page0> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Intento ${item.intento} · ${item.creditos} creditos',
+                    'Intento ${item.intento}',
                     style: TextStyle(
                       color: isDark ? Colors.white70 : Colors.grey.shade600,
                       fontSize: 12,

@@ -7,7 +7,6 @@ class Ramo {
   final String id;
   final String nombre;
   final int intento;
-  final int creditos;
   final String rutEstudiante;
   final String semestreId;
 
@@ -15,7 +14,6 @@ class Ramo {
     required this.id,
     required this.nombre,
     required this.intento,
-    required this.creditos,
     this.rutEstudiante = '',
     this.semestreId = '',
   });
@@ -24,7 +22,6 @@ class Ramo {
         'id': id,
         'nombre': nombre,
         'intento': intento,
-        'creditos': creditos,
         'rut_estudiante': rutEstudiante,
         'semestre_id': semestreId,
       };
@@ -33,7 +30,6 @@ class Ramo {
         id: (m['id'] ?? '').toString(),
         nombre: (m['nombre'] ?? '').toString(),
         intento: (m['intento'] ?? 1) as int,
-        creditos: (m['creditos'] ?? 0) as int,
         rutEstudiante: (m['rut_estudiante'] ?? '').toString(),
         semestreId: (m['semestre_id'] ?? '').toString(),
       );
