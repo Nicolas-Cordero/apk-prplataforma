@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:test1/constants/app_colors.dart';
 import 'package:test1/services/notification_service.dart';
 import 'package:test1/services/ramo_service.dart';
+import 'package:test1/services/promedio_final_service.dart';
+import 'package:test1/services/semestre_service.dart';
 
 /// Página 1: Mis Notas
 class Page1 extends StatefulWidget {
@@ -15,28 +17,34 @@ class Page1 extends StatefulWidget {
 }
 
 class _Page1State extends State<Page1> {
-  int _ramosTotales = 0;
-  final List<_NotaItem> _notas = [];
+  List<Semestre> _semestres = [];
+  Semestre _semestreSeleccionado = Semestre(
+    id: 'SEM-2025-2',
+    nombre: '2025-2',
+    anio: 2025,
+    numeroSemestre: 2,
+    esActual: true,
+  );
   List<Ramo> _ramosPersistidos = [];
+  List<PromedioFinalRegistro> _promediosGuardados = [];
 
   @override
   void initState() {
     super.initState();
-    _loadPersistedRamos();
+    _cargarDatos();
   }
 
-  Future<void> _loadPersistedRamos() async {
+  Future<void> _cargarDatos() async {
     try {
+      final semestres = await SemestreService.obtenerTodosSemestres();
+      final semestreActual = await SemestreService.obtenerSemestreActual();
       final loaded = await RamoService.leerRamos();
+      final promedios = await PromedioFinalService.leerPromedios();
       setState(() {
+        _semestres = semestres;
+        _semestreSeleccionado = semestreActual;
         _ramosPersistidos = loaded;
-        // inicializar notas con ramos existentes si aún no hay notas
-        if (_notas.isEmpty && _ramosPersistidos.isNotEmpty) {
-          for (final r in _ramosPersistidos) {
-            _notas.add(_NotaItem(ramo: r.nombre, intento: r.intento));
-          }
-          _ramosTotales = _ramosPersistidos.length;
-        }
+        _promediosGuardados = promedios;
       });
     } catch (_) {}
   }
@@ -63,30 +71,41 @@ class _Page1State extends State<Page1> {
     );
   }
 
-  void _agregarNota(_NotaItem item) async {
-    setState(() {
-      _notas.add(item);
-      _ramosTotales = _ramosTotales < _notas.length ? _notas.length : _ramosTotales;
-    });
-    await NotificationService.agregar(
-      title: 'Nota registrada',
-      body: 'Ingresaste nota para ${item.ramo} (intento ${item.intento})',
-      type: 'info',
-      iconKey: 'mis_notas',
-    );
+  PromedioFinalRegistro? _buscarPromedio(String ramoId) {
+    try {
+      return _promediosGuardados.firstWhere(
+        (promedio) =>
+            promedio.ramoId == ramoId &&
+            promedio.semestreId == _semestreSeleccionado.id,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
-  void _modificarNota(int index, double nuevaNota) async {
+  Future<void> _guardarPromedioFinal(Ramo ramo, double promedioFinal) async {
+    final nuevoRegistro = PromedioFinalRegistro(
+      ramoId: ramo.id,
+      semestreId: ramo.semestreId,
+      ramoNombre: ramo.nombre,
+      intento: ramo.intento,
+      promedioFinal: promedioFinal,
+    );
+
     setState(() {
-      _notas[index] = _NotaItem(
-        ramo: _notas[index].ramo,
-        intento: _notas[index].intento,
-        nota: nuevaNota,
+      _promediosGuardados.removeWhere(
+        (promedio) =>
+            promedio.ramoId == ramo.id &&
+            promedio.semestreId == _semestreSeleccionado.id,
       );
+      _promediosGuardados.add(nuevoRegistro);
     });
+
+    await PromedioFinalService.guardarPromedios(_promediosGuardados);
+
     await NotificationService.agregar(
-      title: 'Nota modificada',
-      body: 'Has actualizado la nota de ${_notas[index].ramo}',
+      title: 'Promedio final registrado',
+      body: 'Guardaste ${ramo.nombre} con promedio ${promedioFinal.toStringAsFixed(2)}',
       type: 'info',
       iconKey: 'mis_notas',
     );
@@ -95,8 +114,16 @@ class _Page1State extends State<Page1> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final uploadBtnBg = isDark ? const Color(0xFF1F1F1F) : Colors.white;
+    final uploadBtnBg = isDark ? const Color(0xFF1F1F1F) : AppColors.pageBackground;
+    final ramosDelSemestre = _ramosPersistidos
+        .where((ramo) => ramo.semestreId == _semestreSeleccionado.id)
+        .toList();
+    final promediosRegistrados = ramosDelSemestre
+        .where((ramo) => _buscarPromedio(ramo.id) != null)
+        .length;
+    final puedeEditar = _semestreSeleccionado.esActual;
     return Scaffold(
+      backgroundColor: isDark ? null : AppColors.pageBackground,
       body: Column(
         children: [
           Container(
@@ -111,9 +138,11 @@ class _Page1State extends State<Page1> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Semestre 2025-2',
-                  style: TextStyle(
+                Text(
+                  _semestreSeleccionado.esActual
+                      ? 'Semestre actual'
+                      : 'Semestre histórico',
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -121,7 +150,7 @@ class _Page1State extends State<Page1> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Mis Notas',
+                  'Mis Promedios',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -142,12 +171,12 @@ class _Page1State extends State<Page1> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Notas ingresadas',
+                              'Promedios registrados',
                               style: TextStyle(color: Colors.white70, fontSize: 12),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              '${_notas.length} de $_ramosTotales',
+                              '$promediosRegistrados de ${ramosDelSemestre.length}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -180,13 +209,28 @@ class _Page1State extends State<Page1> {
                   ),
                   onPressed: _subirCertificado,
                   icon: Icon(Icons.upload_file, color: AppColors.misNotas),
-                  label: const Text('Subir certificado de notas', style: TextStyle(fontSize: 14)),
+                  label: const Text('Subir certificado de promedios', style: TextStyle(fontSize: 14)),
                 ),
                 const SizedBox(height: 16),
-                if (_ramosPersistidos.isNotEmpty) ...[
-                  const Text('Notas por ramo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Center(child: _buildSemesterSelector()),
+                const SizedBox(height: 16),
+                if (ramosDelSemestre.isNotEmpty) ...[
+                  Text(
+                    puedeEditar ? 'Promedios por ramo' : 'Promedios históricos por ramo',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
-                  ..._notas.map((n) => _buildNotaCard(n)),
+                  ...ramosDelSemestre.map((ramo) => _buildPromedioCard(ramo, _buscarPromedio(ramo.id), puedeEditar)),
+                ] else ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 24),
+                    child: Center(
+                      child: Text(
+                        'No hay ramos registrados para este semestre',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -196,10 +240,67 @@ class _Page1State extends State<Page1> {
     );
   }
 
-  Widget _buildNotaCard(_NotaItem item) {
-    final controller = TextEditingController(text: item.nota?.toString() ?? '');
+  Widget _buildSemesterSelector() {
+    if (_semestres.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: MediaQuery.of(context).size.width * 0.5,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black12),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _semestreSeleccionado.id,
+            isExpanded: true,
+            alignment: Alignment.center,
+            icon: const Icon(Icons.keyboard_arrow_down),
+            selectedItemBuilder: (context) {
+              return _semestres.map((semestre) {
+                return Center(
+                  child: Text(
+                    'Semestre: ${semestre.nombre}',
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList();
+            },
+            items: _semestres.map((semestre) {
+              return DropdownMenuItem(
+                value: semestre.id,
+                child: Text(
+                  'Semestre: ${semestre.nombre}',
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _semestreSeleccionado = _semestres.firstWhere(
+                  (semestre) => semestre.id == value,
+                );
+              });
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromedioCard(
+    Ramo ramo,
+    PromedioFinalRegistro? promedio,
+    bool puedeEditar,
+  ) {
+    final controller = TextEditingController(text: promedio?.promedioFinal.toString() ?? '');
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF121212) : Colors.white;
+    final cardBg = isDark ? const Color(0xFF121212) : AppColors.pageBackground;
     final borderColor = isDark ? Colors.white12 : Colors.black12;
     final primaryText = isDark ? Colors.white : Colors.black87;
     final secondaryText = isDark ? Colors.white70 : Colors.grey.shade600;
@@ -218,61 +319,69 @@ class _Page1State extends State<Page1> {
           Row(
             children: [
               Expanded(
-                child: Text(item.ramo, style: TextStyle(fontWeight: FontWeight.bold, color: primaryText)),
+                child: Text(ramo.nombre, style: TextStyle(fontWeight: FontWeight.bold, color: primaryText)),
               ),
-              Text('Intento ${item.intento}', style: TextStyle(color: secondaryText)),
+              Text('Intento ${ramo.intento}', style: TextStyle(color: secondaryText)),
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: primaryText),
-                  decoration: InputDecoration(
-                    hintText: 'Ingresa tu nota final',
-                    hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF0B0B0B) : Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: borderColor),
+          if (puedeEditar)
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(color: primaryText),
+                    decoration: InputDecoration(
+                      hintText: 'Ingresa tu promedio final',
+                      hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF0B0B0B) : AppColors.pageBackground,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: borderColor),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  final n = double.tryParse(controller.text.trim()) ?? 0.0;
-                  final index = _notas.indexOf(item);
-                  if (index >= 0) _modificarNota(index, n);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.misNotas,
-                  foregroundColor: Colors.white,
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    final promedioFinal = double.tryParse(controller.text.trim()) ?? 0.0;
+                    _guardarPromedioFinal(ramo, promedioFinal);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.misNotas,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Guardar'),
                 ),
-                child: const Text('Guardar'),
+              ],
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0B0B0B) : AppColors.pageBackground,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: borderColor),
               ),
-            ],
-          ),
+              child: Text(
+                promedio != null
+                    ? 'Promedio final registrado: ${promedio.promedioFinal.toStringAsFixed(2)}'
+                    : 'Promedio final no registrado',
+                style: TextStyle(color: promedio != null ? primaryText : secondaryText),
+              ),
+            ),
         ],
       ),
     );
   }
-}
-
-class _NotaItem {
-  final String ramo;
-  final int intento;
-  final double? nota;
-
-  const _NotaItem({required this.ramo, required this.intento, this.nota});
 }

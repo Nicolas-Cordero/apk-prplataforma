@@ -204,23 +204,43 @@ class _Page0State extends State<Page0> {
         _buildSemesterSelector(),
         const SizedBox(height: 12),
         Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            itemCount: ramosSemestre.length + (puedeAgregar ? 1 : 0),
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              if (index == ramosSemestre.length) {
-                return Column(
+          child: ramosSemestre.isEmpty
+              ? ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   children: [
-                    if (ramosSemestre.isNotEmpty) _buildListDivider(isDark),
                     const SizedBox(height: 12),
-                    _buildAgregarRamoCard(isDark),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 24),
+                      child: Center(
+                        child: Text(
+                          'No hay ramos registrados para este semestre',
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    if (puedeAgregar) ...[
+                      const SizedBox(height: 16),
+                      _buildAgregarRamoCard(isDark),
+                    ],
                   ],
-                );
-              }
-              return _buildRamoCard(ramosSemestre[index], isDark, index);
-            },
-          ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: ramosSemestre.length + (puedeAgregar ? 1 : 0),
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    if (index == ramosSemestre.length) {
+                      return Column(
+                        children: [
+                          if (ramosSemestre.isNotEmpty) _buildListDivider(isDark),
+                          const SizedBox(height: 12),
+                          _buildAgregarRamoCard(isDark),
+                        ],
+                      );
+                    }
+                    return _buildRamoCard(ramosSemestre[index], isDark, index);
+                  },
+                ),
         ),
       ],
     );
@@ -354,7 +374,7 @@ class _Page0State extends State<Page0> {
   }
 
   Widget _buildRamoCard(Ramo item, bool isDark, int index) {
-    final cardColor = isDark ? const Color(0xFF1D1D1D) : Colors.white;
+    final cardColor = isDark ? const Color(0xFF1D1D1D) : AppColors.pageBackground;
     final borderColor = isDark ? Colors.white12 : Colors.black12;
 
     return InkWell(
@@ -441,7 +461,7 @@ class _Page0State extends State<Page0> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1D1D1D) : Colors.white,
+          color: isDark ? const Color(0xFF1D1D1D) : AppColors.pageBackground,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: borderColor, width: 1.5),
         ),
@@ -504,7 +524,7 @@ class _Page0State extends State<Page0> {
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.pageBackground,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

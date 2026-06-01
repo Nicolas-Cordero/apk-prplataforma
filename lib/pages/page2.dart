@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:test1/constants/app_colors.dart';
 import 'package:test1/models/estudiante.dart';
 import 'package:test1/services/carrera_service.dart';
 import 'package:test1/services/contacto_emergencia_service.dart';
 import 'package:test1/services/estudiante_service.dart';
 import 'package:test1/services/liceo_service.dart';
 import 'package:test1/services/notification_service.dart';
+import 'package:test1/services/promedio_final_service.dart';
+import 'package:test1/services/semestre_service.dart';
 import 'package:test1/services/universidad_service.dart';
 import 'package:test1/widgets/page2_widgets.dart';
-import 'package:test1/constants/app_colors.dart';
 
 /// Página del Perfil del Estudiante (Yo)
 class Page2 extends StatefulWidget {
@@ -55,7 +57,6 @@ class _Page2State extends State<Page2> {
     super.dispose();
   }
 
-  /// Carga datos del estudiante y el nombre del liceo
   Future<_ProfileData> _cargarDatosCompletos() async {
     final estudiante = await EstudianteService.obtenerEstudianteActual();
     final liceo = await LiceoService.obtenerPorRbd(estudiante.rbdLiceo);
@@ -63,28 +64,49 @@ class _Page2State extends State<Page2> {
       estudiante.rutEstudiante,
     );
 
-    // Obtener la carrera del estudiante para conseguir la universidad
     String comunaEstudio = 'No disponible';
     Carrera? carrera;
     String nombreUniversidad = 'No disponible';
-    
+    double? promedioSemestre;
+
     try {
-      carrera = await CarreraService.obtenerPorRut(
-        estudiante.rutEstudiante,
-      );
+      carrera = await CarreraService.obtenerPorRut(estudiante.rutEstudiante);
       if (carrera != null) {
-        final universidad =
-            await UniversidadService.obtenerPorCodigo(carrera.codigoUniversidad);
+        final universidad = await UniversidadService.obtenerPorCodigo(
+          carrera.codigoUniversidad,
+        );
         if (universidad != null) {
           comunaEstudio = universidad.comuna;
           nombreUniversidad = universidad.nombre;
         }
       }
-    } catch (e) {
-      // Si hay error, mantiene los valores por defecto
+
+      final semestreActual = await SemestreService.obtenerSemestreActual();
+      final promedios = await PromedioFinalService.leerPromedios();
+      final promediosDelSemestre = promedios
+          .where((promedio) => promedio.semestreId == semestreActual.id)
+          .toList();
+
+      if (promediosDelSemestre.isNotEmpty) {
+        final suma = promediosDelSemestre.fold<double>(
+          0,
+          (acumulado, promedio) => acumulado + promedio.promedioFinal,
+        );
+        promedioSemestre = suma / promediosDelSemestre.length;
+      }
+    } catch (_) {
+      // Mantiene valores por defecto si falla alguna consulta.
     }
 
-    return _ProfileData(estudiante, liceo, contacto, comunaEstudio, carrera, nombreUniversidad);
+    return _ProfileData(
+      estudiante,
+      liceo,
+      contacto,
+      comunaEstudio,
+      carrera,
+      nombreUniversidad,
+      promedioSemestre,
+    );
   }
 
   void _inicializarContactos(ContactoEmergencia? contacto) {
@@ -96,8 +118,7 @@ class _Page2State extends State<Page2> {
 
     _nombreEmergenciaController.text = _nombreInicial;
     _relacionEmergenciaController.text = _relacionInicial;
-    _telefonoEmergenciaController.text =
-        _formatearTelefono(_telefonoInicial);
+    _telefonoEmergenciaController.text = _formatearTelefono(_telefonoInicial);
     _correoEmergenciaController.text = _correoInicial;
     _controllersReady = true;
     _evaluarCambios();
@@ -111,8 +132,7 @@ class _Page2State extends State<Page2> {
   void _evaluarCambios() {
     final nombreActual = _nombreEmergenciaController.text.trim();
     final relacionActual = _relacionEmergenciaController.text.trim();
-    final telefonoActual =
-        _normalizarTelefono(_telefonoEmergenciaController.text);
+    final telefonoActual = _normalizarTelefono(_telefonoEmergenciaController.text);
     final correoActual = _correoEmergenciaController.text.trim();
     final hayCambios =
         nombreActual != _nombreInicial ||
@@ -231,7 +251,6 @@ class _Page2State extends State<Page2> {
     return FutureBuilder<_ProfileData>(
       future: _profileDataFuture,
       builder: (context, snapshot) {
-        // Estado de carga
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
             child: Column(
@@ -254,7 +273,6 @@ class _Page2State extends State<Page2> {
           );
         }
 
-        // Error
         if (snapshot.hasError) {
           return Center(
             child: Column(
@@ -295,7 +313,6 @@ class _Page2State extends State<Page2> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Encabezado de perfil
                 Center(
                   child: ProfileHeader(
                     nombre: estudiante.nombre,
@@ -304,42 +321,35 @@ class _Page2State extends State<Page2> {
                   ),
                 ),
                 const SizedBox(height: 32),
-
-                // Tarjetas académicas principales
-                _buildAcademicCards(estudiante, data.comunaEstudio),
+                _buildAcademicCards(
+                  estudiante,
+                  data.comunaEstudio,
+                  data.promedioSemestre,
+                ),
                 const SizedBox(height: 8),
-
-                // Sección: Datos Personales
                 SectionTitle(
                   title: 'Datos Personales',
                   color: AppColors.yo.withValues(alpha: 0.8),
                 ),
                 _buildPersonalDataSection(estudiante),
                 const SizedBox(height: 16),
-
-                // Sección: Contactos de emergencia
                 SectionTitle(
                   title: 'Contactos de emergencia',
                   color: AppColors.misNotas.withValues(alpha: 0.85),
                 ),
                 _buildEmergencyContactsSection(estudiante),
                 const SizedBox(height: 16),
-
-                // Sección: Datos Carrera
                 SectionTitle(
                   title: 'Datos Carrera',
                   color: const Color(0xFF27AE60).withValues(alpha: 0.8),
                 ),
                 _buildCarreraDataSection(data.carrera, data.nombreUniversidad),
                 const SizedBox(height: 16),
-
-                // Sección: Establecimiento de origen
                 SectionTitle(
                   title: 'Establecimiento de origen',
                   color: const Color(0xFFE67E22),
                 ),
                 _buildEstablecimientoSection(data.liceo),
-
                 const SizedBox(height: 24),
               ],
             ),
@@ -349,10 +359,10 @@ class _Page2State extends State<Page2> {
     );
   }
 
-  /// Construye las tarjetas de información académica principal
   Widget _buildAcademicCards(
     Estudiante estudiante,
     String comunaEstudio,
+    double? promedioSemestre,
   ) {
     return SizedBox(
       height: 110,
@@ -365,8 +375,10 @@ class _Page2State extends State<Page2> {
         childAspectRatio: 1.1,
         children: [
           InfoCard(
-            label: 'Prom. Media',
-            value: estudiante.promedioGeneral.toStringAsFixed(1),
+            label: 'Prom. Semestre',
+            value: promedioSemestre != null
+                ? promedioSemestre.toStringAsFixed(1)
+                : '-',
             backgroundColor: const Color(0xFF16A085),
             accentColor: const Color(0xFF16A085),
             icon: Icons.trending_up,
@@ -390,7 +402,6 @@ class _Page2State extends State<Page2> {
     );
   }
 
-  /// Construye la sección de datos de carrera
   Widget _buildCarreraDataSection(Carrera? carrera, String nombreUniversidad) {
     final nombreCarrera = carrera?.nombre ?? 'No disponible';
     final semestres = carrera?.duracionSemestres.toString() ?? 'No disponible';
@@ -408,7 +419,6 @@ class _Page2State extends State<Page2> {
       ),
       child: Column(
         children: [
-          // Carrera con soporte para múltiples líneas
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -418,9 +428,9 @@ class _Page2State extends State<Page2> {
                   color: const Color(0xFF27AE60).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.book,
-                  color: const Color(0xFF27AE60),
+                  color: Color(0xFF27AE60),
                   size: 24,
                 ),
               ),
@@ -479,7 +489,6 @@ class _Page2State extends State<Page2> {
     );
   }
 
-  /// Construye la sección de datos personales
   Widget _buildPersonalDataSection(Estudiante estudiante) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -518,7 +527,6 @@ class _Page2State extends State<Page2> {
     );
   }
 
-  /// Construye la sección de contactos de emergencia
   Widget _buildEmergencyContactsSection(Estudiante estudiante) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -616,7 +624,6 @@ class _Page2State extends State<Page2> {
     );
   }
 
-  /// Construye la sección de establecimiento de origen
   Widget _buildEstablecimientoSection(Liceo? liceo) {
     final nombreLiceo = liceo?.nombre ?? 'No disponible';
     final comuna = liceo?.comuna ?? 'No disponible';
@@ -651,7 +658,6 @@ class _Page2State extends State<Page2> {
   }
 }
 
-/// Clase auxiliar para agrupar datos que se cargan de forma asíncrona
 class _ProfileData {
   final Estudiante estudiante;
   final Liceo? liceo;
@@ -659,6 +665,7 @@ class _ProfileData {
   final String comunaEstudio;
   final Carrera? carrera;
   final String nombreUniversidad;
+  final double? promedioSemestre;
 
   _ProfileData(
     this.estudiante,
@@ -667,5 +674,6 @@ class _ProfileData {
     this.comunaEstudio,
     this.carrera,
     this.nombreUniversidad,
+    this.promedioSemestre,
   );
 }

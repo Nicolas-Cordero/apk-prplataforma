@@ -15,5 +15,5 @@ abstract class AppColors {
   
   // Color de fondo general
   static const Color navBarBackground = Colors.white;
-  static const Color pageBackground = Colors.white;
+  static const Color pageBackground = Color.fromRGBO(255, 251, 242, 1);
 }
