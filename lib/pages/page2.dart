@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test1/models/estudiante.dart';
+import 'package:test1/services/carrera_service.dart';
 import 'package:test1/services/contacto_emergencia_service.dart';
 import 'package:test1/services/estudiante_service.dart';
 import 'package:test1/services/liceo_service.dart';
 import 'package:test1/services/notification_service.dart';
+import 'package:test1/services/universidad_service.dart';
 import 'package:test1/widgets/page2_widgets.dart';
 import 'package:test1/constants/app_colors.dart';
 
@@ -18,26 +20,36 @@ class Page2 extends StatefulWidget {
 
 class _Page2State extends State<Page2> {
   late Future<_ProfileData> _profileDataFuture;
+  final TextEditingController _nombreEmergenciaController =
+      TextEditingController();
+  final TextEditingController _relacionEmergenciaController =
+      TextEditingController();
   final TextEditingController _telefonoEmergenciaController =
       TextEditingController();
   final TextEditingController _correoEmergenciaController =
       TextEditingController();
   bool _controllersReady = false;
   bool _guardandoContacto = false;
-    String _telefonoInicial = '';
-    String _correoInicial = '';
-    bool _mostrarGuardar = false;
+  String _nombreInicial = '';
+  String _relacionInicial = '';
+  String _telefonoInicial = '';
+  String _correoInicial = '';
+  bool _mostrarGuardar = false;
 
   @override
   void initState() {
     super.initState();
     _profileDataFuture = _cargarDatosCompletos();
+    _nombreEmergenciaController.addListener(_onContactoChange);
+    _relacionEmergenciaController.addListener(_onContactoChange);
     _telefonoEmergenciaController.addListener(_onContactoChange);
     _correoEmergenciaController.addListener(_onContactoChange);
   }
 
   @override
   void dispose() {
+    _nombreEmergenciaController.dispose();
+    _relacionEmergenciaController.dispose();
     _telefonoEmergenciaController.dispose();
     _correoEmergenciaController.dispose();
     super.dispose();
@@ -50,14 +62,40 @@ class _Page2State extends State<Page2> {
     final contacto = await ContactoEmergenciaService.obtenerPorRut(
       estudiante.rutEstudiante,
     );
-    return _ProfileData(estudiante, liceo, contacto);
+
+    // Obtener la carrera del estudiante para conseguir la universidad
+    String comunaEstudio = 'No disponible';
+    Carrera? carrera;
+    String nombreUniversidad = 'No disponible';
+    
+    try {
+      carrera = await CarreraService.obtenerPorRut(
+        estudiante.rutEstudiante,
+      );
+      if (carrera != null) {
+        final universidad =
+            await UniversidadService.obtenerPorCodigo(carrera.codigoUniversidad);
+        if (universidad != null) {
+          comunaEstudio = universidad.comuna;
+          nombreUniversidad = universidad.nombre;
+        }
+      }
+    } catch (e) {
+      // Si hay error, mantiene los valores por defecto
+    }
+
+    return _ProfileData(estudiante, liceo, contacto, comunaEstudio, carrera, nombreUniversidad);
   }
 
   void _inicializarContactos(ContactoEmergencia? contacto) {
     if (_controllersReady) return;
+    _nombreInicial = (contacto?.nombre ?? '').trim();
+    _relacionInicial = (contacto?.relacion ?? '').trim();
     _telefonoInicial = _normalizarTelefono(contacto?.telefono ?? '');
     _correoInicial = (contacto?.correo ?? '').trim();
 
+    _nombreEmergenciaController.text = _nombreInicial;
+    _relacionEmergenciaController.text = _relacionInicial;
     _telefonoEmergenciaController.text =
         _formatearTelefono(_telefonoInicial);
     _correoEmergenciaController.text = _correoInicial;
@@ -71,11 +109,16 @@ class _Page2State extends State<Page2> {
   }
 
   void _evaluarCambios() {
+    final nombreActual = _nombreEmergenciaController.text.trim();
+    final relacionActual = _relacionEmergenciaController.text.trim();
     final telefonoActual =
         _normalizarTelefono(_telefonoEmergenciaController.text);
     final correoActual = _correoEmergenciaController.text.trim();
     final hayCambios =
-        telefonoActual != _telefonoInicial || correoActual != _correoInicial;
+        nombreActual != _nombreInicial ||
+        relacionActual != _relacionInicial ||
+        telefonoActual != _telefonoInicial ||
+        correoActual != _correoInicial;
 
     if (hayCambios != _mostrarGuardar) {
       setState(() {
@@ -107,6 +150,8 @@ class _Page2State extends State<Page2> {
       final teniaTelefono = _telefonoInicial.isNotEmpty;
       final teniaCorreo = _correoInicial.isNotEmpty;
 
+      final nombre = _nombreEmergenciaController.text.trim();
+      final relacion = _relacionEmergenciaController.text.trim();
       final telefono = _formatearTelefono(
         _normalizarTelefono(_telefonoEmergenciaController.text),
       );
@@ -122,6 +167,8 @@ class _Page2State extends State<Page2> {
 
       await ContactoEmergenciaService.guardar(
         rutEstudiante: rutEstudiante,
+        nombre: nombre,
+        relacion: relacion,
         telefono: telefono,
         correo: correo,
       );
@@ -153,6 +200,8 @@ class _Page2State extends State<Page2> {
         }
       }
 
+      _nombreInicial = nombre;
+      _relacionInicial = relacion;
       _telefonoInicial = telefonoNormalizado;
       _correoInicial = correoNormalizado;
       _mostrarGuardar = false;
@@ -257,7 +306,7 @@ class _Page2State extends State<Page2> {
                 const SizedBox(height: 32),
 
                 // Tarjetas académicas principales
-                _buildAcademicCards(estudiante),
+                _buildAcademicCards(estudiante, data.comunaEstudio),
                 const SizedBox(height: 8),
 
                 // Sección: Datos Personales
@@ -266,6 +315,7 @@ class _Page2State extends State<Page2> {
                   color: AppColors.yo.withValues(alpha: 0.8),
                 ),
                 _buildPersonalDataSection(estudiante),
+                const SizedBox(height: 16),
 
                 // Sección: Contactos de emergencia
                 SectionTitle(
@@ -273,6 +323,15 @@ class _Page2State extends State<Page2> {
                   color: AppColors.misNotas.withValues(alpha: 0.85),
                 ),
                 _buildEmergencyContactsSection(estudiante),
+                const SizedBox(height: 16),
+
+                // Sección: Datos Carrera
+                SectionTitle(
+                  title: 'Datos Carrera',
+                  color: const Color(0xFF27AE60).withValues(alpha: 0.8),
+                ),
+                _buildCarreraDataSection(data.carrera, data.nombreUniversidad),
+                const SizedBox(height: 16),
 
                 // Sección: Establecimiento de origen
                 SectionTitle(
@@ -291,7 +350,10 @@ class _Page2State extends State<Page2> {
   }
 
   /// Construye las tarjetas de información académica principal
-  Widget _buildAcademicCards(Estudiante estudiante) {
+  Widget _buildAcademicCards(
+    Estudiante estudiante,
+    String comunaEstudio,
+  ) {
     return SizedBox(
       height: 110,
       child: GridView.count(
@@ -310,11 +372,11 @@ class _Page2State extends State<Page2> {
             icon: Icons.trending_up,
           ),
           InfoCard(
-            label: 'PAES',
-            value: estudiante.puntajePaes.toString(),
+            label: 'Comuna Estudio',
+            value: comunaEstudio,
             backgroundColor: const Color(0xFFE74C3C),
             accentColor: const Color(0xFFE74C3C),
-            icon: Icons.assessment,
+            icon: Icons.location_city,
           ),
           InfoCard(
             label: 'Generación',
@@ -322,6 +384,95 @@ class _Page2State extends State<Page2> {
             backgroundColor: const Color(0xFFF39C12),
             accentColor: const Color(0xFFF39C12),
             icon: Icons.calendar_today,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Construye la sección de datos de carrera
+  Widget _buildCarreraDataSection(Carrera? carrera, String nombreUniversidad) {
+    final nombreCarrera = carrera?.nombre ?? 'No disponible';
+    final semestres = carrera?.duracionSemestres.toString() ?? 'No disponible';
+    final codigoCarrera = carrera?.codigoCarrera ?? 'No disponible';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF27AE60).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF27AE60).withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Carrera con soporte para múltiples líneas
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF27AE60).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.book,
+                  color: const Color(0xFF27AE60),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Carrera',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      nombreCarrera,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(color: const Color(0xFF27AE60).withValues(alpha: 0.2)),
+          const SizedBox(height: 12),
+          PersonalDataTile(
+            icon: Icons.schedule,
+            label: 'Semestres',
+            value: semestres,
+            iconColor: const Color(0xFF27AE60),
+          ),
+          Divider(color: const Color(0xFF27AE60).withValues(alpha: 0.2)),
+          PersonalDataTile(
+            icon: Icons.school,
+            label: 'Universidad',
+            value: nombreUniversidad,
+            iconColor: const Color(0xFF27AE60),
+          ),
+          Divider(color: const Color(0xFF27AE60).withValues(alpha: 0.2)),
+          PersonalDataTile(
+            icon: Icons.code,
+            label: 'Código Carrera',
+            value: codigoCarrera,
+            iconColor: const Color(0xFF27AE60),
           ),
         ],
       ),
@@ -381,6 +532,24 @@ class _Page2State extends State<Page2> {
       ),
       child: Column(
         children: [
+          EditableDataField(
+            icon: Icons.person,
+            label: 'Nombre del contacto',
+            hintText: 'Ingresar',
+            iconColor: AppColors.misNotas,
+            controller: _nombreEmergenciaController,
+            keyboardType: TextInputType.text,
+          ),
+          Divider(color: AppColors.misNotas.withValues(alpha: 0.2)),
+          EditableDataField(
+            icon: Icons.family_restroom,
+            label: 'Relación',
+            hintText: 'Ejemplo: Madre/Abuelo',
+            iconColor: AppColors.misNotas,
+            controller: _relacionEmergenciaController,
+            keyboardType: TextInputType.text,
+          ),
+          Divider(color: AppColors.misNotas.withValues(alpha: 0.2)),
           EditableDataField(
             icon: Icons.phone_in_talk,
             label: 'Teléfono de emergencia',
@@ -487,6 +656,16 @@ class _ProfileData {
   final Estudiante estudiante;
   final Liceo? liceo;
   final ContactoEmergencia? contacto;
+  final String comunaEstudio;
+  final Carrera? carrera;
+  final String nombreUniversidad;
 
-  _ProfileData(this.estudiante, this.liceo, this.contacto);
+  _ProfileData(
+    this.estudiante,
+    this.liceo,
+    this.contacto,
+    this.comunaEstudio,
+    this.carrera,
+    this.nombreUniversidad,
+  );
 }

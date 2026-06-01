@@ -5,11 +5,15 @@ import 'package:flutter/services.dart';
 /// Modelo para contacto de emergencia
 class ContactoEmergencia {
   final String rutEstudiante;
+  final String nombre;
+  final String relacion;
   final String telefono;
   final String correo;
 
   ContactoEmergencia({
     required this.rutEstudiante,
+    required this.nombre,
+    required this.relacion,
     required this.telefono,
     required this.correo,
   });
@@ -20,6 +24,8 @@ class ContactoEmergencia {
   ) {
     return ContactoEmergencia(
       rutEstudiante: rutEstudiante,
+      nombre: (json['nombre'] as String?) ?? '',
+      relacion: (json['relacion'] as String?) ?? '',
       telefono: (json['telefono'] as String?) ?? '',
       correo: (json['correo'] as String?) ?? '',
     );
@@ -27,6 +33,8 @@ class ContactoEmergencia {
 
   Map<String, dynamic> toJson() {
     return {
+      'nombre': nombre,
+      'relacion': relacion,
       'telefono': telefono,
       'correo': correo,
     };
@@ -91,17 +99,23 @@ class ContactoEmergenciaService {
   /// Guarda o actualiza contacto por RUT
   static Future<void> guardar({
     required String rutEstudiante,
+    required String nombre,
+    required String relacion,
     required String telefono,
     required String correo,
   }) async {
     final data = await _leerMapa();
+    final nombreFinal = nombre.trim();
+    final relacionFinal = relacion.trim();
     final telefonoFinal = telefono.trim();
     final correoFinal = correo.trim();
 
-    if (telefonoFinal.isEmpty && correoFinal.isEmpty) {
+    if (telefonoFinal.isEmpty && correoFinal.isEmpty && nombreFinal.isEmpty) {
       data.remove(rutEstudiante);
     } else {
       data[rutEstudiante] = {
+        'nombre': nombreFinal,
+        'relacion': relacionFinal,
         'telefono': telefonoFinal,
         'correo': correoFinal,
       };
