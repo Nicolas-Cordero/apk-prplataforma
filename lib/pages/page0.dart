@@ -59,8 +59,9 @@ class _Page0State extends State<Page0> {
   Future<void> _loadRamos() async {
     final loaded = await RamoService.leerRamos();
     setState(() {
-      _ramos.clear();
-      _ramos.addAll(loaded);
+      _ramos
+        ..clear()
+        ..addAll(loaded);
     });
   }
 
@@ -136,7 +137,9 @@ class _Page0State extends State<Page0> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(index == null ? 'Guardar Ramo' : 'Guardar Cambios'),
+                  child: Text(
+                    index == null ? 'Guardar Ramo' : 'Guardar Cambios',
+                  ),
                 ),
               ),
             ],
@@ -164,7 +167,6 @@ class _Page0State extends State<Page0> {
       }
     });
 
-    // disparar notificación (no await para evitar usar context tras espera)
     if (index == null) {
       NotificationService.agregar(
         title: 'Ramo agregado',
@@ -182,7 +184,31 @@ class _Page0State extends State<Page0> {
     }
 
     Navigator.pop(context);
-    // persistir en background
+    await RamoService.guardarRamos(_ramos);
+  }
+
+  Future<void> _togglePuedoAyudar(Ramo item, bool value) async {
+    final updated = _ramos
+        .map(
+          (ramo) => ramo.id == item.id
+              ? Ramo(
+                  id: ramo.id,
+                  nombre: ramo.nombre,
+                  intento: ramo.intento,
+                  rutEstudiante: ramo.rutEstudiante,
+                  semestreId: ramo.semestreId,
+                  puedoAyudar: value,
+                )
+              : ramo,
+        )
+        .toList();
+
+    setState(() {
+      _ramos
+        ..clear()
+        ..addAll(updated);
+    });
+
     await RamoService.guardarRamos(_ramos);
   }
 
@@ -190,11 +216,10 @@ class _Page0State extends State<Page0> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Filtrar ramos del semestre seleccionado
     final ramosSemestre = _ramos
         .where((ramo) => ramo.semestreId == _semestreSeleccionado.id)
         .toList();
-    
+
     final puedeAgregar = _semestreSeleccionado.esActual;
 
     return Column(
@@ -394,56 +419,88 @@ class _Page0State extends State<Page0> {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.misRamos.withValues(alpha: 0.12),
-              child: Icon(
-                Icons.menu_book,
-                color: AppColors.misRamos,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.nombre,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppColors.misRamos.withValues(alpha: 0.12),
+                  child: Icon(
+                    Icons.menu_book,
+                    color: AppColors.misRamos,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Intento ${item.intento}',
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.nombre,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Intento ${item.intento}',
+                        style: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            InkWell(
-              onTap: () => _abrirFormularioRamo(index: index),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.misRamos.withValues(alpha: 0.12),
+                ),
+                InkWell(
+                  onTap: () => _abrirFormularioRamo(index: index),
                   borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.misRamos.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.edit,
+                      size: 16,
+                      color: AppColors.misRamos,
+                    ),
+                  ),
                 ),
-                child: Icon(
-                  Icons.edit,
-                  size: 16,
-                  color: AppColors.misRamos,
+              ],
+            ),
+            if (!_semestreSeleccionado.esActual) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilterChip(
+                  selected: item.puedoAyudar,
+                  onSelected: (value) => _togglePuedoAyudar(item, value),
+                  label: const Text('Puedo ayudar'),
+                  avatar: Icon(
+                    item.puedoAyudar
+                        ? Icons.check_circle
+                        : Icons.volunteer_activism,
+                    size: 18,
+                    color: item.puedoAyudar ? Colors.white : AppColors.misRamos,
+                  ),
+                  backgroundColor: AppColors.pageBackground,
+                  selectedColor: AppColors.misRamos,
+                  checkmarkColor: Colors.white,
+                  labelStyle: TextStyle(
+                    color: item.puedoAyudar ? Colors.white : AppColors.misRamos,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  side: BorderSide(
+                    color: AppColors.misRamos.withValues(alpha: 0.35),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -554,7 +611,7 @@ class _Page0State extends State<Page0> {
       },
       decoration: InputDecoration(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.pageBackground,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

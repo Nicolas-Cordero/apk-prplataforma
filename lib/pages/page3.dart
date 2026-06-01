@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test1/constants/app_colors.dart';
 import 'package:test1/models/becario_item.dart';
+import 'package:test1/services/estudiante_service.dart';
+import 'package:test1/services/ramo_service.dart';
 import 'package:test1/widgets/becario_detail_sheet.dart';
 
 /// Página 3: Becarios
@@ -68,10 +70,12 @@ class _Page3State extends State<Page3> {
   }
 
   Future<_BecariosData> _cargarBecarios() async {
+    final estudianteActual = await EstudianteService.obtenerEstudianteActual();
     final estudiantes = await _cargarLista('assets/data/students_becarios.json');
     final carreras = await _cargarLista('assets/data/carreras.json');
     final universidades = await _cargarLista('assets/data/universidades.json');
     final liceoData = await _cargarMapa('assets/data/liceos.json');
+    final ramosPuedoAyudar = await RamoService.leerRamosPuedoAyudar();
 
     final carrerasPorRut = <String, Map<String, dynamic>>{};
     for (final carrera in carreras) {
@@ -92,6 +96,11 @@ class _Page3State extends State<Page3> {
 
     final liceoRbd = liceoData?['rbd_liceo'] as String? ?? '';
     final liceoNombre = liceoData?['nombre'] as String? ?? 'No disponible';
+    final ramosAyudaPorRut = <String, List<String>>{};
+    for (final ramo in ramosPuedoAyudar) {
+      ramosAyudaPorRut.putIfAbsent(ramo.rutEstudiante, () => []);
+      ramosAyudaPorRut[ramo.rutEstudiante]!.add(ramo.nombre);
+    }
 
     final items = <BecarioItem>[];
     for (final estudiante in estudiantes) {
@@ -117,16 +126,15 @@ class _Page3State extends State<Page3> {
           liceo: liceo,
           generacion: estudiante['generacion'] as int? ?? 0,
           telefono: estudiante['telefono'] as String? ?? 'No disponible',
+          esUsuarioActual: rut == estudianteActual.rutEstudiante,
+          ramosPuedoAyudar: ramosAyudaPorRut[rut] ?? const [],
         ),
       );
     }
 
     final actual = items.isNotEmpty ? items.first : null;
-    final otros = actual == null
-        ? items
-        : items.where((item) => item.rut != actual.rut).toList();
 
-    return _BecariosData(actual: actual, items: otros);
+    return _BecariosData(actual: actual, items: items);
   }
 
   List<BecarioItem> _filtrar(
@@ -458,6 +466,17 @@ class _Page3State extends State<Page3> {
                       fontSize: 14,
                     ),
                   ),
+                  if (item.esUsuarioActual) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tu perfil',
+                      style: TextStyle(
+                        color: AppColors.misRamos,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     item.carrera,
@@ -474,6 +493,24 @@ class _Page3State extends State<Page3> {
                       fontSize: 12,
                     ),
                   ),
+                  if (item.ramosPuedoAyudar.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: item.ramosPuedoAyudar
+                          .map(
+                            (ramo) => Chip(
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              label: Text(ramo, style: const TextStyle(fontSize: 11)),
+                              backgroundColor: AppColors.becarios.withValues(alpha: 0.12),
+                              side: BorderSide(color: AppColors.becarios.withValues(alpha: 0.2)),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
                 ],
               ),
             ),

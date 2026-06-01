@@ -9,6 +9,7 @@ class Ramo {
   final int intento;
   final String rutEstudiante;
   final String semestreId;
+  final bool puedoAyudar;
 
   Ramo({
     required this.id,
@@ -16,6 +17,7 @@ class Ramo {
     required this.intento,
     this.rutEstudiante = '',
     this.semestreId = '',
+    this.puedoAyudar = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -24,6 +26,7 @@ class Ramo {
         'intento': intento,
         'rut_estudiante': rutEstudiante,
         'semestre_id': semestreId,
+        'puedo_ayudar': puedoAyudar,
       };
 
   static Ramo fromJson(Map<String, dynamic> m) => Ramo(
@@ -32,36 +35,97 @@ class Ramo {
         intento: (m['intento'] ?? 1) as int,
         rutEstudiante: (m['rut_estudiante'] ?? '').toString(),
         semestreId: (m['semestre_id'] ?? '').toString(),
+        puedoAyudar: (m['puedo_ayudar'] ?? false) as bool,
       );
 }
 
 class RamoService {
+  static const String _seedPath = 'assets/data/ramos.json';
+
   static File _file() {
     final dir = Directory('${Directory.systemTemp.path}/test1');
     if (!dir.existsSync()) dir.createSync(recursive: true);
     return File('${dir.path}/ramos.json');
   }
 
+  static Future<List<Ramo>> _cargarSeed() async {
+    try {
+      final data = await rootBundle.loadString(_seedPath);
+      final decoded = jsonDecode(data);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map(Ramo.fromJson)
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
   static Future<List<Ramo>> leerRamos() async {
     final f = _file();
     if (!f.existsSync()) {
-      // try to initialize from assets
-      try {
-        final data = await rootBundle.loadString('assets/data/ramos.json');
-        await f.writeAsString(data);
-      } catch (_) {
-        await f.writeAsString(jsonEncode([]));
-      }
+      final seed = await _cargarSeed();
+      await f.writeAsString(jsonEncode(seed.map((r) => r.toJson()).toList()));
     }
 
     try {
       final content = await f.readAsString();
       final decoded = jsonDecode(content);
       if (decoded is List) {
-        return decoded.map<Ramo>((e) => Ramo.fromJson(e as Map<String, dynamic>)).toList();
+        final ramos = decoded
+            .whereType<Map<String, dynamic>>()
+            .map(Ramo.fromJson)
+            .toList();
+        final seed = await _cargarSeed();
+        final existentes = {for (final ramo in ramos) ramo.id: ramo};
+        for (final ramo in seed) {
+          existentes.putIfAbsent(ramo.id, () => ramo);
+        }
+        final merged = existentes.values.toList();
+        if (merged.length != ramos.length) {
+          await f.writeAsString(jsonEncode(merged.map((r) => r.toJson()).toList()));
+        }
+        return merged;
       }
     } catch (_) {}
     return [];
+  }
+
+  static Future<List<Ramo>> leerRamosPorRut(String rutEstudiante) async {
+    final ramos = await leerRamos();
+    return ramos.where((ramo) => ramo.rutEstudiante == rutEstudiante).toList();
+  }
+
+  static Future<List<Ramo>> leerRamosPuedoAyudar() async {
+    final ramos = await leerRamos();
+    return ramos.where((ramo) => ramo.puedoAyudar).toList();
+  }
+
+  static Future<List<Ramo>> leerRamosPuedoAyudarPorRut(String rutEstudiante) async {
+    final ramos = await leerRamos();
+    return ramos
+        .where((ramo) => ramo.rutEstudiante == rutEstudiante && ramo.puedoAyudar)
+        .toList();
+  }
+
+  static Future<void> actualizarPuedoAyudar(String ramoId, bool value) async {
+    final ramos = await leerRamos();
+    final actualizados = ramos
+        .map(
+          (ramo) => ramo.id == ramoId
+              ? Ramo(
+                  id: ramo.id,
+                  nombre: ramo.nombre,
+                  intento: ramo.intento,
+                  rutEstudiante: ramo.rutEstudiante,
+                  semestreId: ramo.semestreId,
+                  puedoAyudar: value,
+                )
+              : ramo,
+        )
+        .toList();
+    await guardarRamos(actualizados);
   }
 
   static Future<void> guardarRamos(List<Ramo> ramos) async {

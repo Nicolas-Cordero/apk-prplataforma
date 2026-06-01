@@ -7,6 +7,7 @@ import 'package:test1/services/contacto_emergencia_service.dart';
 import 'package:test1/services/estudiante_service.dart';
 import 'package:test1/services/liceo_service.dart';
 import 'package:test1/services/notification_service.dart';
+import 'package:test1/services/ramo_service.dart';
 import 'package:test1/services/promedio_final_service.dart';
 import 'package:test1/services/semestre_service.dart';
 import 'package:test1/services/universidad_service.dart';
@@ -68,6 +69,7 @@ class _Page2State extends State<Page2> {
     Carrera? carrera;
     String nombreUniversidad = 'No disponible';
     double? promedioSemestre;
+    List<Ramo> ramosPuedoAyudar = [];
 
     try {
       carrera = await CarreraService.obtenerPorRut(estudiante.rutEstudiante);
@@ -82,6 +84,10 @@ class _Page2State extends State<Page2> {
       }
 
       final semestreActual = await SemestreService.obtenerSemestreActual();
+      final ramos = await RamoService.leerRamosPorRut(estudiante.rutEstudiante);
+      ramosPuedoAyudar = ramos
+          .where((ramo) => ramo.puedoAyudar && ramo.semestreId != semestreActual.id)
+          .toList();
       final promedios = await PromedioFinalService.leerPromedios();
       final promediosDelSemestre = promedios
           .where((promedio) => promedio.semestreId == semestreActual.id)
@@ -106,6 +112,7 @@ class _Page2State extends State<Page2> {
       carrera,
       nombreUniversidad,
       promedioSemestre,
+      ramosPuedoAyudar,
     );
   }
 
@@ -350,6 +357,12 @@ class _Page2State extends State<Page2> {
                   color: const Color(0xFFE67E22),
                 ),
                 _buildEstablecimientoSection(data.liceo),
+                const SizedBox(height: 16),
+                SectionTitle(
+                  title: 'Puedo ayudar',
+                  color: AppColors.misRamos.withValues(alpha: 0.85),
+                ),
+                _buildPuedoAyudarSection(data.ramosPuedoAyudar),
                 const SizedBox(height: 24),
               ],
             ),
@@ -656,6 +669,84 @@ class _Page2State extends State<Page2> {
       ),
     );
   }
+
+  Widget _buildPuedoAyudarSection(List<Ramo> ramos) {
+    if (ramos.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.misRamos.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.misRamos.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          'Todavía no has activado ramos para ayudar',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      );
+    }
+
+    return Column(
+      children: ramos.map((ramo) {
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.misRamos.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.misRamos.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.misRamos.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.volunteer_activism,
+                  color: Color(0xFF57B6A7),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ramo.nombre,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Intento ${ramo.intento} · ${ramo.semestreId.replaceFirst('SEM-', '')}',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
 
 class _ProfileData {
@@ -666,6 +757,7 @@ class _ProfileData {
   final Carrera? carrera;
   final String nombreUniversidad;
   final double? promedioSemestre;
+  final List<Ramo> ramosPuedoAyudar;
 
   _ProfileData(
     this.estudiante,
@@ -675,5 +767,6 @@ class _ProfileData {
     this.carrera,
     this.nombreUniversidad,
     this.promedioSemestre,
+    this.ramosPuedoAyudar,
   );
 }

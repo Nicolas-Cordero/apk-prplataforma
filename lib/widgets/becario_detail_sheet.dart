@@ -61,6 +61,27 @@ class BecarioDetailSheet extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (item.esUsuarioActual) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.misRamos.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Tu perfil',
+                            style: TextStyle(
+                              color: AppColors.misRamos,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -96,6 +117,8 @@ class BecarioDetailSheet extends StatelessWidget {
               label: 'Generacion',
               value: item.generacion.toString(),
             ),
+            const SizedBox(height: 8),
+            _buildRamosAyudaSection(item.ramosPuedoAyudar),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -116,6 +139,50 @@ class BecarioDetailSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRamosAyudaSection(List<String> ramos) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Puedo ayudar',
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (ramos.isEmpty)
+          Text(
+            'No ha activado ramos para ayudar',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: ramos
+                .map(
+                  (ramo) => Chip(
+                    label: Text(ramo),
+                    backgroundColor: AppColors.becarios.withValues(alpha: 0.14),
+                    labelStyle: TextStyle(
+                      color: AppColors.becarios,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    side: BorderSide(color: AppColors.becarios.withValues(alpha: 0.25)),
+                  ),
+                )
+                .toList(),
+          ),
+      ],
     );
   }
 
