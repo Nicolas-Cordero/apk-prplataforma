@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:test1/constants/app_colors.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
 
 /// Página 4: Compromiso
 class Page4 extends StatelessWidget {

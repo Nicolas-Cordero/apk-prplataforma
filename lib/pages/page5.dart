@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:test1/models/app_notification.dart';
-import 'package:test1/services/notification_service.dart';
-import 'package:test1/widgets/app_background.dart';
+import 'package:carmen_goudie/models/app_notification.dart';
+import 'package:carmen_goudie/services/notification_service.dart';
+import 'package:carmen_goudie/widgets/app_background.dart';
 
 /// Página de notificaciones
 class Page5 extends StatefulWidget {

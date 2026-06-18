@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'package:test1/models/estudiante.dart';
+import 'package:carmen_goudie/models/estudiante.dart';
 
 /// Servicio de acceso a datos de estudiantes
 /// 

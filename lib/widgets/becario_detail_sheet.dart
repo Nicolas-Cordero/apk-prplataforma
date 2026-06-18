@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:test1/constants/app_colors.dart';
-import 'package:test1/models/becario_item.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
+import 'package:carmen_goudie/models/becario_item.dart';
 
 class BecarioDetailSheet extends StatelessWidget {
   final BecarioItem item;

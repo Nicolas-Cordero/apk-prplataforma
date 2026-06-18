@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:test1/constants/app_colors.dart';
-import 'package:test1/services/notification_service.dart';
-import 'package:test1/services/ramo_service.dart';
-import 'package:test1/services/promedio_final_service.dart';
-import 'package:test1/services/semestre_service.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
+import 'package:carmen_goudie/services/notification_service.dart';
+import 'package:carmen_goudie/services/ramo_service.dart';
+import 'package:carmen_goudie/services/promedio_final_service.dart';
+import 'package:carmen_goudie/services/semestre_service.dart';
 
 /// Página 1: Mis Notas
 class Page1 extends StatefulWidget {

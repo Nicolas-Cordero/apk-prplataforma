@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:test1/constants/app_colors.dart';
-import 'package:test1/models/becario_item.dart';
-import 'package:test1/services/estudiante_service.dart';
-import 'package:test1/services/ramo_service.dart';
-import 'package:test1/widgets/becario_detail_sheet.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
+import 'package:carmen_goudie/models/becario_item.dart';
+import 'package:carmen_goudie/services/estudiante_service.dart';
+import 'package:carmen_goudie/services/ramo_service.dart';
+import 'package:carmen_goudie/widgets/becario_detail_sheet.dart';
 
 /// Página 3: Becarios
 class Page3 extends StatefulWidget {

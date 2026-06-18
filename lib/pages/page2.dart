@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:test1/constants/app_colors.dart';
-import 'package:test1/models/estudiante.dart';
-import 'package:test1/services/carrera_service.dart';
-import 'package:test1/services/contacto_emergencia_service.dart';
-import 'package:test1/services/estudiante_service.dart';
-import 'package:test1/services/liceo_service.dart';
-import 'package:test1/services/notification_service.dart';
-import 'package:test1/services/ramo_service.dart';
-import 'package:test1/services/promedio_final_service.dart';
-import 'package:test1/services/semestre_service.dart';
-import 'package:test1/services/universidad_service.dart';
-import 'package:test1/widgets/page2_widgets.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
+import 'package:carmen_goudie/models/estudiante.dart';
+import 'package:carmen_goudie/services/carrera_service.dart';
+import 'package:carmen_goudie/services/contacto_emergencia_service.dart';
+import 'package:carmen_goudie/services/estudiante_service.dart';
+import 'package:carmen_goudie/services/liceo_service.dart';
+import 'package:carmen_goudie/services/notification_service.dart';
+import 'package:carmen_goudie/services/ramo_service.dart';
+import 'package:carmen_goudie/services/promedio_final_service.dart';
+import 'package:carmen_goudie/services/semestre_service.dart';
+import 'package:carmen_goudie/services/universidad_service.dart';
+import 'package:carmen_goudie/widgets/page2_widgets.dart';
 
 /// Página del Perfil del Estudiante (Yo)
 class Page2 extends StatefulWidget {

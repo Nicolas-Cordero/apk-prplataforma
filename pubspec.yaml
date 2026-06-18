@@ -1,5 +1,5 @@
-name: test1
-description: "A new Flutter project."
+name: carmen_goudie
+description: "Aplicación móvil para estudiantes becarios de la Fundación Carmen Goudie."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.8.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -37,6 +37,9 @@ dependencies:
   flutter_local_notifications: ^17.2.2
   file_picker: ^5.2.5
   flutter_svg: ^2.0.6
+  dio: ^5.8.0
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

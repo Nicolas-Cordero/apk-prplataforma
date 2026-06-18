@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:test1/app.dart';
-import 'package:test1/services/notification_service.dart';
+import 'package:carmen_goudie/app.dart';
+import 'package:carmen_goudie/services/api_service.dart';
+import 'package:carmen_goudie/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ApiService.init();
   await NotificationService.inicializar();
   runApp(const MyApp());
 }

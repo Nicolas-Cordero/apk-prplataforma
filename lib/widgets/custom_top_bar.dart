@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:test1/models/estudiante.dart';
-import 'package:test1/services/estudiante_service.dart';
-import 'package:test1/pages/page5.dart';
-import 'package:test1/services/notification_service.dart';
+import 'package:carmen_goudie/models/estudiante.dart';
+import 'package:carmen_goudie/services/estudiante_service.dart';
+import 'package:carmen_goudie/pages/page5.dart';
+import 'package:carmen_goudie/services/notification_service.dart';
 
 /// Widget personalizado para la barra superior de la aplicación
 class CustomAppBar extends StatefulWidget {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:test1/constants/app_colors.dart';
-import 'package:test1/services/notification_service.dart';
-import 'package:test1/services/ramo_service.dart';
-import 'package:test1/services/semestre_service.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
+import 'package:carmen_goudie/services/notification_service.dart';
+import 'package:carmen_goudie/services/ramo_service.dart';
+import 'package:carmen_goudie/services/semestre_service.dart';
 
 /// Página 0: Mis Ramos
 class Page0 extends StatefulWidget {
@@ -597,7 +597,7 @@ class _Page0State extends State<Page0> {
 
   Widget _buildDropdownField() {
     return DropdownButtonFormField<int>(
-      initialValue: _intentoSeleccionado,
+      value: _intentoSeleccionado,
       items: const [
         DropdownMenuItem(value: 1, child: Text('1°')),
         DropdownMenuItem(value: 2, child: Text('2°')),

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:test1/constants/app_colors.dart';
-import 'package:test1/models/tab_item.dart';
-import 'package:test1/pages/page0.dart';
-import 'package:test1/pages/page1.dart';
-import 'package:test1/pages/page2.dart';
-import 'package:test1/pages/page3.dart';
-import 'package:test1/pages/page4.dart';
-import 'package:test1/widgets/custom_top_bar.dart';
-import 'package:test1/widgets/app_background.dart';
-import 'package:test1/services/contacto_emergencia_service.dart';
-import 'package:test1/services/estudiante_service.dart';
-import 'package:test1/services/notification_service.dart';
-import 'package:test1/widgets/custom_bottom_nav_bar.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
+import 'package:carmen_goudie/models/tab_item.dart';
+import 'package:carmen_goudie/pages/page0.dart';
+import 'package:carmen_goudie/pages/page1.dart';
+import 'package:carmen_goudie/pages/page2.dart';
+import 'package:carmen_goudie/pages/page3.dart';
+import 'package:carmen_goudie/pages/page4.dart';
+import 'package:carmen_goudie/widgets/custom_top_bar.dart';
+import 'package:carmen_goudie/widgets/app_background.dart';
+import 'package:carmen_goudie/services/contacto_emergencia_service.dart';
+import 'package:carmen_goudie/services/estudiante_service.dart';
+import 'package:carmen_goudie/services/notification_service.dart';
+import 'package:carmen_goudie/widgets/custom_bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
   final Function(bool)? onThemeChanged;

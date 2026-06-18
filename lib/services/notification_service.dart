@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:test1/constants/app_colors.dart';
-import 'package:test1/models/app_notification.dart';
+import 'package:carmen_goudie/constants/app_colors.dart';
+import 'package:carmen_goudie/models/app_notification.dart';
 
 /// Servicio para gestionar notificaciones locales
 class NotificationService {
