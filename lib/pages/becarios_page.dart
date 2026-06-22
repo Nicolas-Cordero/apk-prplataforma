@@ -398,6 +398,35 @@ class _BecariosPageState extends State<BecariosPage> {
     );
   }
 
+  Widget _buildAvatarCard(BecarioItem item) {
+    const double radius = 22;
+    final fallback = CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.becarios.withValues(alpha: 0.18),
+      child: Text(
+        item.iniciales,
+        style: TextStyle(
+          color: AppColors.becarios,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+
+    if (item.fotoUrl == null || item.fotoUrl!.isEmpty) return fallback;
+
+    return ClipOval(
+      child: Image.network(
+        item.fotoUrl!,
+        width: radius * 2,
+        height: radius * 2,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, _) => fallback,
+        loadingBuilder: (_, child, progress) =>
+            progress == null ? child : fallback,
+      ),
+    );
+  }
+
   Widget _buildCard(BecarioItem item, bool isDark) {
     return InkWell(
       onTap: () => _mostrarDetalle(item),
@@ -420,17 +449,7 @@ class _BecariosPageState extends State<BecariosPage> {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.becarios.withValues(alpha: 0.18),
-              child: Text(
-                item.iniciales,
-                style: TextStyle(
-                  color: AppColors.becarios,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            _buildAvatarCard(item),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

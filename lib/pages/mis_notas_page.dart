@@ -353,7 +353,10 @@ class _MisNotasPageState extends State<MisNotasPage> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () {
-                    final promedioFinal = double.tryParse(controller.text.trim()) ?? 0.0;
+                    // Evita persistir un 0.0 falso (y una notificación "Guardaste … 0.00")
+                    // cuando el campo está vacío o contiene texto no numérico.
+                    final promedioFinal = double.tryParse(controller.text.trim());
+                    if (promedioFinal == null) return;
                     _guardarPromedioFinal(ramo, promedioFinal);
                   },
                   style: ElevatedButton.styleFrom(

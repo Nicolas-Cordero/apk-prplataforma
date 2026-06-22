@@ -1,136 +1,153 @@
-import 'dart:convert';
-import 'dart:io';
+import 'package:carmen_goudie/services/api_service.dart';
 
-import 'package:flutter/services.dart' show rootBundle;
+// ── Enum ─────────────────────────────────────────────────────────────────────
+
+// ignore_for_file: constant_identifier_names
+enum EstadoRamo { APROBADO, REPROBADO, CURSANDO, ELIMINADO }
+
+extension EstadoRamoX on EstadoRamo {
+  String get etiqueta {
+    switch (this) {
+      case EstadoRamo.APROBADO:  return 'Aprobado';
+      case EstadoRamo.REPROBADO: return 'Reprobado';
+      case EstadoRamo.CURSANDO:  return 'Cursando';
+      case EstadoRamo.ELIMINADO: return 'Eliminado';
+    }
+  }
+}
+
+// ── Modelo ────────────────────────────────────────────────────────────────────
 
 class Ramo {
+  /// id y semestreId se guardan como String para compatibilidad con
+  /// mis_notas_page y PromedioFinalService (que los comparan como String).
   final String id;
-  final String nombre;
-  final int intento;
-  final String rutEstudiante;
   final String semestreId;
+  final String rutEstudiante;
+  final int codigoCarrera;
+  final String nombre;
+  final EstadoRamo estado;
+  final String comentario;
+  final int intento;
+  final double? notaFinal;
+  /// Local únicamente: no viene del backend ni se envía en ningún DTO.
   final bool puedoAyudar;
 
-  Ramo({
+  const Ramo({
     required this.id,
+    required this.semestreId,
+    required this.rutEstudiante,
+    required this.codigoCarrera,
     required this.nombre,
+    required this.estado,
+    required this.comentario,
     required this.intento,
-    this.rutEstudiante = '',
-    this.semestreId = '',
+    this.notaFinal,
     this.puedoAyudar = false,
   });
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'nombre': nombre,
-        'intento': intento,
-        'rut_estudiante': rutEstudiante,
-        'semestre_id': semestreId,
-        'puedo_ayudar': puedoAyudar,
-      };
-
-  static Ramo fromJson(Map<String, dynamic> m) => Ramo(
-        id: (m['id'] ?? '').toString(),
-        nombre: (m['nombre'] ?? '').toString(),
-        intento: (m['intento'] ?? 1) as int,
-        rutEstudiante: (m['rut_estudiante'] ?? '').toString(),
-        semestreId: (m['semestre_id'] ?? '').toString(),
-        puedoAyudar: (m['puedo_ayudar'] ?? false) as bool,
+  factory Ramo.fromJson(Map<String, dynamic> json) => Ramo(
+        id: (json['id'] as int).toString(),
+        semestreId: (json['semestre_id'] as int).toString(),
+        rutEstudiante: json['rut_estudiante'] as String? ?? '',
+        codigoCarrera: json['codigo_carrera'] as int? ?? 0,
+        nombre: json['nombre'] as String? ?? '',
+        estado: _parseEstado(json['estado'] as String? ?? 'CURSANDO'),
+        comentario: json['comentario'] as String? ?? '',
+        intento: json['intento'] as int? ?? 1,
+        notaFinal: json['nota_final'] != null
+            ? (json['nota_final'] as num).toDouble()
+            : null,
       );
+
+  Ramo copyWith({
+    String? nombre,
+    EstadoRamo? estado,
+    bool? puedoAyudar,
+  }) =>
+      Ramo(
+        id: id,
+        semestreId: semestreId,
+        rutEstudiante: rutEstudiante,
+        codigoCarrera: codigoCarrera,
+        nombre: nombre ?? this.nombre,
+        estado: estado ?? this.estado,
+        comentario: comentario,
+        intento: intento,
+        notaFinal: notaFinal,
+        puedoAyudar: puedoAyudar ?? this.puedoAyudar,
+      );
+
+  static EstadoRamo _parseEstado(String s) {
+    switch (s) {
+      case 'APROBADO':  return EstadoRamo.APROBADO;
+      case 'REPROBADO': return EstadoRamo.REPROBADO;
+      case 'ELIMINADO': return EstadoRamo.ELIMINADO;
+      default:          return EstadoRamo.CURSANDO;
+    }
+  }
 }
 
+// ── DTOs ─────────────────────────────────────────────────────────────────────
+
+class CreateRamoDto {
+  final int semestreId;
+  final int codigoCarrera;
+  final String nombre;
+
+  const CreateRamoDto({
+    required this.semestreId,
+    required this.codigoCarrera,
+    required this.nombre,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'semestre_id':    semestreId,
+        'codigo_carrera': codigoCarrera,
+        'nombre':         nombre,
+        'estado':         'CURSANDO',
+      };
+}
+
+class UpdateRamoDto {
+  final String? nombre;
+  final EstadoRamo? estado;
+
+  const UpdateRamoDto({this.nombre, this.estado});
+
+  Map<String, dynamic> toJson() {
+    final m = <String, dynamic>{};
+    if (nombre != null) m['nombre'] = nombre;
+    if (estado != null) m['estado'] = estado!.name;
+    return m;
+  }
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
 class RamoService {
-  static const String _seedPath = 'assets/data/ramos.json';
-
-  static File _file() {
-    final dir = Directory('${Directory.systemTemp.path}/test1');
-    if (!dir.existsSync()) dir.createSync(recursive: true);
-    return File('${dir.path}/ramos.json');
-  }
-
-  static Future<List<Ramo>> _cargarSeed() async {
-    try {
-      final data = await rootBundle.loadString(_seedPath);
-      final decoded = jsonDecode(data);
-      if (decoded is List) {
-        return decoded
-            .whereType<Map<String, dynamic>>()
-            .map(Ramo.fromJson)
-            .toList();
-      }
-    } catch (_) {}
-    return [];
-  }
-
-  static Future<List<Ramo>> leerRamos() async {
-    final f = _file();
-    if (!f.existsSync()) {
-      final seed = await _cargarSeed();
-      await f.writeAsString(jsonEncode(seed.map((r) => r.toJson()).toList()));
-    }
-
-    try {
-      final content = await f.readAsString();
-      final decoded = jsonDecode(content);
-      if (decoded is List) {
-        final ramos = decoded
-            .whereType<Map<String, dynamic>>()
-            .map(Ramo.fromJson)
-            .toList();
-        final seed = await _cargarSeed();
-        final existentes = {for (final ramo in ramos) ramo.id: ramo};
-        for (final ramo in seed) {
-          existentes.putIfAbsent(ramo.id, () => ramo);
-        }
-        final merged = existentes.values.toList();
-        if (merged.length != ramos.length) {
-          await f.writeAsString(jsonEncode(merged.map((r) => r.toJson()).toList()));
-        }
-        return merged;
-      }
-    } catch (_) {}
-    return [];
-  }
-
-  static Future<List<Ramo>> leerRamosPorRut(String rutEstudiante) async {
-    final ramos = await leerRamos();
-    return ramos.where((ramo) => ramo.rutEstudiante == rutEstudiante).toList();
-  }
-
-  static Future<List<Ramo>> leerRamosPuedoAyudar() async {
-    final ramos = await leerRamos();
-    return ramos.where((ramo) => ramo.puedoAyudar).toList();
-  }
-
-  static Future<List<Ramo>> leerRamosPuedoAyudarPorRut(String rutEstudiante) async {
-    final ramos = await leerRamos();
-    return ramos
-        .where((ramo) => ramo.rutEstudiante == rutEstudiante && ramo.puedoAyudar)
+  /// GET /ramo/me — devuelve todos los ramos del estudiante autenticado.
+  static Future<List<Ramo>> obtenerMisRamos() async {
+    final response = await ApiService.get('/ramo/me');
+    return (response.data as List<dynamic>)
+        .map((e) => Ramo.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  static Future<void> actualizarPuedoAyudar(String ramoId, bool value) async {
-    final ramos = await leerRamos();
-    final actualizados = ramos
-        .map(
-          (ramo) => ramo.id == ramoId
-              ? Ramo(
-                  id: ramo.id,
-                  nombre: ramo.nombre,
-                  intento: ramo.intento,
-                  rutEstudiante: ramo.rutEstudiante,
-                  semestreId: ramo.semestreId,
-                  puedoAyudar: value,
-                )
-              : ramo,
-        )
-        .toList();
-    await guardarRamos(actualizados);
+  /// Alias para backward-compat con mis_notas_page que llama leerRamos().
+  static Future<List<Ramo>> leerRamos() => obtenerMisRamos();
+
+  /// POST /ramo/me — crea un ramo en el semestre actual del estudiante.
+  /// El rut_estudiante lo inyecta el backend desde el JWT.
+  static Future<Ramo> crearRamo(CreateRamoDto dto) async {
+    final response = await ApiService.post('/ramo/me', data: dto.toJson());
+    return Ramo.fromJson(response.data as Map<String, dynamic>);
   }
 
-  static Future<void> guardarRamos(List<Ramo> ramos) async {
-    final f = _file();
-    final list = ramos.map((r) => r.toJson()).toList();
-    await f.writeAsString(jsonEncode(list));
+  /// PATCH /ramo/me/:id_ramo — actualiza nombre o estado de un ramo propio.
+  static Future<Ramo> actualizarRamo(int idRamo, UpdateRamoDto dto) async {
+    final response =
+        await ApiService.patch('/ramo/me/$idRamo', data: dto.toJson());
+    return Ramo.fromJson(response.data as Map<String, dynamic>);
   }
 }
