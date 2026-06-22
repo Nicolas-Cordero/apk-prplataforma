@@ -4,15 +4,15 @@ import 'package:carmen_goudie/services/notification_service.dart';
 import 'package:carmen_goudie/services/ramo_service.dart';
 import 'package:carmen_goudie/services/semestre_service.dart';
 
-/// Página 0: Mis Ramos
-class Page0 extends StatefulWidget {
-  const Page0({super.key});
+/// Página de Mis Ramos
+class MisRamosPage extends StatefulWidget {
+  const MisRamosPage({super.key});
 
   @override
-  State<Page0> createState() => _Page0State();
+  State<MisRamosPage> createState() => _MisRamosPageState();
 }
 
-class _Page0State extends State<Page0> {
+class _MisRamosPageState extends State<MisRamosPage> {
   final List<Ramo> _ramos = [];
   List<Semestre> _semestres = [];
   Semestre _semestreActual = Semestre(

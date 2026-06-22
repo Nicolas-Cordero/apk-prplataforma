@@ -1,30 +1,66 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-/// Widget para mostrar el encabezado de perfil (nombre y avatar)
-class ProfileHeader extends StatelessWidget {
+/// Widget para mostrar el encabezado de perfil (nombre, avatar y estado).
+///
+/// Si [fotoUrl] es no-nulo y no vacío intenta cargar la imagen de red.
+/// Si la URL falla o el campo es nulo se muestra el avatar de iniciales.
+class ProfileHeader extends StatefulWidget {
   final String nombre;
   final String apellido;
   final String estado;
+  final String? fotoUrl;
 
   const ProfileHeader({
     super.key,
     required this.nombre,
     required this.apellido,
     required this.estado,
+    this.fotoUrl,
   });
 
   @override
+  State<ProfileHeader> createState() => _ProfileHeaderState();
+}
+
+class _ProfileHeaderState extends State<ProfileHeader> {
+  bool _fotoError = false;
+
+  @override
+  void didUpdateWidget(ProfileHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fotoUrl != widget.fotoUrl) {
+      setState(() => _fotoError = false);
+    }
+  }
+
+  Widget _initiales() => Center(
+        child: Text(
+          '${widget.nombre[0]}${widget.apellido[0]}',
+          style: const TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+
+  @override
   Widget build(BuildContext context) {
+    final nombre = widget.nombre;
+    final apellido = widget.apellido;
+    final estado = widget.estado;
+
     final statusColor = estado.toLowerCase() == 'activo'
         ? const Color(0xFF16A085)
         : Colors.orange;
     final statusText =
         estado.toLowerCase() == 'activo' ? 'Beca Activa' : estado;
 
+    final tieneFoto =
+        widget.fotoUrl != null && widget.fotoUrl!.isNotEmpty && !_fotoError;
+
     return Column(
       children: [
-        // Avatar circular grande
         Container(
           width: 120,
           height: 120,
@@ -46,20 +82,24 @@ class ProfileHeader extends StatelessWidget {
               ),
             ],
           ),
-          child: Center(
-            child: Text(
-              '${nombre[0]}${apellido[0]}',
-              style: const TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
+          child: tieneFoto
+              ? ClipOval(
+                  child: Image.network(
+                    widget.fotoUrl!,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => setState(() => _fotoError = true));
+                      return _initiales();
+                    },
+                  ),
+                )
+              : _initiales(),
         ),
         const SizedBox(height: 20),
 
-        // Nombre completo
         Text(
           '$nombre $apellido',
           style: const TextStyle(
@@ -70,7 +110,6 @@ class ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        // Badge de estado
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -286,91 +325,6 @@ class PersonalDataTile extends StatelessWidget {
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                   overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Campo editable para contactos de emergencia
-class EditableDataField extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String hintText;
-  final Color iconColor;
-  final TextEditingController controller;
-  final TextInputType keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
-
-  const EditableDataField({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.hintText,
-    required this.iconColor,
-    required this.controller,
-    required this.keyboardType,
-    this.inputFormatters,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                TextFormField(
-                  controller: controller,
-                  keyboardType: keyboardType,
-                  inputFormatters: inputFormatters,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: hintText,
-                    hintStyle: TextStyle(
-                      color: Colors.grey[500],
-                      fontWeight: FontWeight.w500,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
                 ),
               ],
             ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:test1/app.dart';
+import 'package:carmen_goudie/app.dart';
 
 void main() {
   testWidgets('MyApp loads successfully', (WidgetTester tester) async {

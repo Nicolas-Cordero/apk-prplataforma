@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carmen_goudie/constants/app_colors.dart';
 import 'package:carmen_goudie/services/usuario_service.dart';
 import 'package:carmen_goudie/services/password_recovery_service.dart';
@@ -80,7 +81,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   String _parseError(DioException e) {
-    switch (e.response?.statusCode) {
+    final status = e.response?.statusCode;
+    switch (status) {
       case 401:
         return 'Credenciales incorrectas.';
       case 403:
@@ -88,7 +90,8 @@ class _LoginPageState extends State<LoginPage> {
       case 429:
         return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
       default:
-        return 'No se pudo conectar con el servidor.';
+        if (status != null) return 'Error del servidor ($status). Inténtalo de nuevo.';
+        return 'No se pudo conectar con el servidor. Verifica tu conexión.';
     }
   }
 
@@ -107,31 +110,51 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : AppColors.pageBackground,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildHeader(isDark),
-                const SizedBox(height: 40),
-                _buildFormCard(isDark),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: _openForgotPassword,
-                  child: Text(
-                    '¿Olvidaste tu contraseña?',
-                    style: TextStyle(
-                      color: AppColors.yo.withValues(alpha: 0.75),
-                      fontSize: 14,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildHeader(isDark),
+                    const SizedBox(height: 40),
+                    _buildFormCard(isDark),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _openForgotPassword,
+                      child: Text(
+                        '¿Olvidaste tu contraseña?',
+                        style: TextStyle(
+                          color: AppColors.yo.withValues(alpha: 0.75),
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    color: isDark ? Colors.white54 : Colors.black38,
+                  ),
+                  tooltip: 'Salir',
+                  onPressed: () => SystemNavigator.pop(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

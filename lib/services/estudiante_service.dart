@@ -1,76 +1,51 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:carmen_goudie/models/estudiante.dart';
+import 'package:carmen_goudie/services/api_service.dart';
 
-/// Servicio de acceso a datos de estudiantes
-/// 
-/// Capa de abstracción entre la app y la fuente de datos (JSON → API).
-/// Todos los cambios de backend se hacen SOLO aquí, sin tocar widgets.
+/// Servicio de lectura de datos de estudiantes.
+///
+/// Solo expone operaciones de lectura (`GET`): un estudiante no edita la
+/// información inherente a su propio perfil desde la apk. Los errores HTTP se
+/// propagan tal cual los lanza `ApiService`/Dio, igual que el resto de los
+/// services del proyecto.
 class EstudianteService {
-  static const String _estudiantesPath = 'assets/data/students_becarios.json';
-
-  /// Carga un archivo JSON desde assets (maneja Map o List)
-  static Future<dynamic> _cargarJson(String path) async {
-    try {
-      final jsonString = await rootBundle.loadString(path);
-      return jsonDecode(jsonString);
-    } catch (e) {
-      throw Exception('Error al cargar $path: $e');
-    }
+  /// GET /estudiante/me
+  ///
+  /// Devuelve los datos del estudiante autenticado actualmente (el rut se toma
+  /// del token guardado, en el backend).
+  static Future<Estudiante> obtenerPerfilPropio() async {
+    final response = await ApiService.get('/estudiante/me');
+    return Estudiante.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// Obtiene el estudiante actual (del usuario en sesión)
-  /// Retorna el primer estudiante de la lista
-  /// En producción: GET /api/estudiantes/me
-  static Future<Estudiante> obtenerEstudianteActual() async {
-    final jsonData = await _cargarJson(_estudiantesPath);
-    if (jsonData is List && jsonData.isNotEmpty) {
-      return Estudiante.fromJson(jsonData[0] as Map<String, dynamic>);
-    }
-    if (jsonData is Map<String, dynamic>) {
-      return Estudiante.fromJson(jsonData);
-    }
-    throw Exception('Formato de estudiantes inválido');
+  /// GET /estudiante?soloActivos=true
+  ///
+  /// Devuelve la lista de becarios activos con generación, liceo y carrera
+  /// (incluida universidad) ya incluidos en la respuesta.
+  static Future<List<Estudiante>> obtenerBecariosActivos() async {
+    final response = await ApiService.get(
+      '/estudiante',
+      queryParameters: {'soloActivos': 'true'},
+    );
+    return (response.data as List<dynamic>)
+        .map((e) => Estudiante.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  /// Obtiene todos los estudiantes
-  /// En producción: GET /api/estudiantes
-  static Future<List<Estudiante>> obtenerTodos() async {
-    final jsonData = await _cargarJson(_estudiantesPath);
-    if (jsonData is List) {
-      return jsonData
-          .whereType<Map<String, dynamic>>()
-          .map(Estudiante.fromJson)
-          .toList();
-    }
-    if (jsonData is Map<String, dynamic>) {
-      return [Estudiante.fromJson(jsonData)];
-    }
-    return [];
+  /// GET /estudiante/:rut_estudiante/simple
+  ///
+  /// Devuelve un estudiante con información reducida, identificado por rut.
+  static Future<Estudiante> obtenerEstudianteSimple(String rutEstudiante) async {
+    final response = await ApiService.get('/estudiante/$rutEstudiante/simple');
+    return Estudiante.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// Actualiza datos del estudiante
-  /// En producción: PUT /api/estudiantes/{rut}
-  static Future<void> actualizar(Estudiante estudiante) async {
-    // await http.put('/api/estudiantes/${estudiante.rutEstudiante}',
-    //   body: jsonEncode(estudiante.toJson()),
-    // );
-  }
-
-  /// Crea un nuevo estudiante
-  /// En producción: POST /api/estudiantes
-  static Future<Estudiante> crear(Estudiante estudiante) async {
-    // await http.post('/api/estudiantes',
-    //   body: jsonEncode(estudiante.toJson()),
-    // );
-    return estudiante;
-  }
-
-  /// Elimina un estudiante por RUT
-  /// En producción: DELETE /api/estudiantes/{rut}
-  static Future<void> eliminar(String rut) async {
-    // await http.delete('/api/estudiantes/$rut');
+  /// GET /estudiante/:rut_estudiante/complete
+  ///
+  /// Devuelve un estudiante con información completa, identificado por rut.
+  static Future<Estudiante> obtenerEstudianteCompleto(
+    String rutEstudiante,
+  ) async {
+    final response = await ApiService.get('/estudiante/$rutEstudiante/complete');
+    return Estudiante.fromJson(response.data as Map<String, dynamic>);
   }
 }
-
-

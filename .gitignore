@@ -2,6 +2,10 @@
 env.json
 env.*.json
 
+reporte.md
+roadmap.md
+TODO.md
+
 # Miscellaneous
 *.class
 *.log

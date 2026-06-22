@@ -2,13 +2,13 @@ class BecarioItem {
   final String rut;
   final String nombre;
   final String apellido;
+  final String? fotoUrl;
   final String universidad;
   final String carrera;
   final String liceo;
   final int generacion;
   final String telefono;
   final bool esUsuarioActual;
-  final List<String> ramosPuedoAyudar;
 
   BecarioItem({
     required this.rut,
@@ -19,8 +19,8 @@ class BecarioItem {
     required this.liceo,
     required this.generacion,
     required this.telefono,
+    this.fotoUrl,
     this.esUsuarioActual = false,
-    this.ramosPuedoAyudar = const [],
   });
 
   String get nombreCompleto => '$nombre $apellido'.trim();

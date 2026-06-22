@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static const String _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:3000',
+    defaultValue: 'http://192.168.100.13:3001',
   );
 
   static const String _keyAccessToken = 'access_token';

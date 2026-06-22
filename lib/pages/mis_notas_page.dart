@@ -8,15 +8,15 @@ import 'package:carmen_goudie/services/ramo_service.dart';
 import 'package:carmen_goudie/services/promedio_final_service.dart';
 import 'package:carmen_goudie/services/semestre_service.dart';
 
-/// Página 1: Mis Notas
-class Page1 extends StatefulWidget {
-  const Page1({super.key});
+/// Página de Mis Notas
+class MisNotasPage extends StatefulWidget {
+  const MisNotasPage({super.key});
 
   @override
-  State<Page1> createState() => _Page1State();
+  State<MisNotasPage> createState() => _MisNotasPageState();
 }
 
-class _Page1State extends State<Page1> {
+class _MisNotasPageState extends State<MisNotasPage> {
   List<Semestre> _semestres = [];
   Semestre _semestreSeleccionado = Semestre(
     id: 'SEM-2025-2',

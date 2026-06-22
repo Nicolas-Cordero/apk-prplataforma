@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:carmen_goudie/constants/app_colors.dart';
 import 'package:carmen_goudie/models/tab_item.dart';
-import 'package:carmen_goudie/pages/page0.dart';
-import 'package:carmen_goudie/pages/page1.dart';
-import 'package:carmen_goudie/pages/page2.dart';
-import 'package:carmen_goudie/pages/page3.dart';
-import 'package:carmen_goudie/pages/page4.dart';
+import 'package:carmen_goudie/pages/mis_ramos_page.dart';
+import 'package:carmen_goudie/pages/mis_notas_page.dart';
+import 'package:carmen_goudie/pages/perfil_estudiante_page.dart';
+import 'package:carmen_goudie/pages/becarios_page.dart';
+import 'package:carmen_goudie/pages/compromiso_page.dart';
 import 'package:carmen_goudie/widgets/custom_top_bar.dart';
 import 'package:carmen_goudie/widgets/app_background.dart';
 import 'package:carmen_goudie/services/contacto_emergencia_service.dart';
@@ -15,8 +15,9 @@ import 'package:carmen_goudie/widgets/custom_bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
   final Function(bool)? onThemeChanged;
+  final VoidCallback onLogout;
 
-  const HomePage({super.key, this.onThemeChanged});
+  const HomePage({super.key, this.onThemeChanged, required this.onLogout});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -32,31 +33,31 @@ class _HomePageState extends State<HomePage> {
       icon: Icons.book,
       label: 'Mis Ramos',
       color: AppColors.misRamos,
-      page: const Page0(),
+      page: const MisRamosPage(),
     ),
     TabItem(
       icon: Icons.assignment,
       label: 'Mis Notas',
       color: AppColors.misNotas,
-      page: const Page1(),
+      page: const MisNotasPage(),
     ),
     TabItem(
       icon: Icons.person,
       label: 'Yo',
       color: AppColors.yo,
-      page: const Page2(),
+      page: const PerfilEstudiantePage(),
     ),
     TabItem(
       icon: Icons.group,
       label: 'Becarios',
       color: AppColors.becarios,
-      page: const Page3(),
+      page: const BecariosPage(),
     ),
     TabItem(
       icon: Icons.description,
       label: 'Compromiso',
       color: AppColors.compromiso,
-      page: const Page4(),
+      page: const CompromisoPage(),
     ),
   ];
 
@@ -74,7 +75,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _verificarContactosEmergencia() async {
     try {
-      final estudiante = await EstudianteService.obtenerEstudianteActual();
+      final estudiante = await EstudianteService.obtenerPerfilPropio();
       final contacto = await ContactoEmergenciaService.obtenerPorRut(
         estudiante.rutEstudiante,
       );
@@ -112,6 +113,7 @@ class _HomePageState extends State<HomePage> {
         child: CustomAppBar(
           isDarkMode: _isDarkMode,
           onThemeToggle: _toggleTheme,
+          onLogout: widget.onLogout,
         ),
       ),
       body: AppBackground(child: tabs[_selectedIndex].page),

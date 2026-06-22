@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:carmen_goudie/constants/app_colors.dart';
 
-/// Página 4: Compromiso
-class Page4 extends StatelessWidget {
-  const Page4({super.key});
+/// Página de Compromiso
+class CompromisoPage extends StatelessWidget {
+  const CompromisoPage({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -53,6 +53,7 @@ class _MyAppState extends State<MyApp> {
     if (_isAuthenticated!) {
       return HomePage(
         onThemeChanged: (isDark) => setState(() => _isDarkMode = isDark),
+        onLogout: () => setState(() => _isAuthenticated = false),
       );
     }
 

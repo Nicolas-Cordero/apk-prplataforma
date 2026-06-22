@@ -1,27 +1,23 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:carmen_goudie/constants/app_colors.dart';
 import 'package:carmen_goudie/models/becario_item.dart';
 import 'package:carmen_goudie/services/estudiante_service.dart';
-import 'package:carmen_goudie/services/ramo_service.dart';
 import 'package:carmen_goudie/widgets/becario_detail_sheet.dart';
 
-/// Página 3: Becarios
-class Page3 extends StatefulWidget {
-  const Page3({super.key});
+/// Página de Becarios — muestra la red de becarios activos obtenida del backend.
+class BecariosPage extends StatefulWidget {
+  const BecariosPage({super.key});
 
   @override
-  State<Page3> createState() => _Page3State();
+  State<BecariosPage> createState() => _BecariosPageState();
 }
 
-class _Page3State extends State<Page3> {
+class _BecariosPageState extends State<BecariosPage> {
   late Future<_BecariosData> _dataFuture;
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   bool _filtroUniversidad = false;
-  bool _filtroCarrera = false;
+  bool _filtroGeneracion = false;
   bool _filtroLiceo = false;
 
   @override
@@ -40,124 +36,75 @@ class _Page3State extends State<Page3> {
   void _onSearchChanged() {
     final value = _searchController.text.trim();
     if (value == _query) return;
-    setState(() {
-      _query = value;
-    });
-  }
-
-  Future<List<Map<String, dynamic>>> _cargarLista(String path) async {
-    final jsonString = await rootBundle.loadString(path);
-    final data = jsonDecode(jsonString);
-    if (data is List) {
-      return data.whereType<Map<String, dynamic>>().toList();
-    }
-    if (data is Map<String, dynamic>) {
-      return [data];
-    }
-    return [];
-  }
-
-  Future<Map<String, dynamic>?> _cargarMapa(String path) async {
-    final jsonString = await rootBundle.loadString(path);
-    final data = jsonDecode(jsonString);
-    if (data is Map<String, dynamic>) return data;
-    if (data is List) {
-      for (final item in data) {
-        if (item is Map<String, dynamic>) return item;
-      }
-    }
-    return null;
+    setState(() => _query = value);
   }
 
   Future<_BecariosData> _cargarBecarios() async {
-    final estudianteActual = await EstudianteService.obtenerEstudianteActual();
-    final estudiantes = await _cargarLista('assets/data/students_becarios.json');
-    final carreras = await _cargarLista('assets/data/carreras.json');
-    final universidades = await _cargarLista('assets/data/universidades.json');
-    final liceoData = await _cargarMapa('assets/data/liceos.json');
-    final ramosPuedoAyudar = await RamoService.leerRamosPuedoAyudar();
+    final (becarios, propio) = await (
+      EstudianteService.obtenerBecariosActivos(),
+      EstudianteService.obtenerPerfilPropio(),
+    ).wait;
 
-    final carrerasPorRut = <String, Map<String, dynamic>>{};
-    for (final carrera in carreras) {
-      final rut = carrera['rut_estudiante'] as String?;
-      if (rut != null && rut.isNotEmpty) {
-        carrerasPorRut[rut] = carrera;
-      }
-    }
+    final items = becarios.map((est) {
+      final univNombre =
+          est.carreras.firstOrNull?.universidad?.nombre ?? 'No disponible';
+      final carreraNombre =
+          est.carreras.firstOrNull?.nombre ?? 'No disponible';
+      final liceoNombre = est.liceo?.nombre ?? 'No disponible';
+      final generacionAnio = est.generacionRel?.anio ?? est.generacionId;
+      final telefono =
+          est.telefono.isNotEmpty ? est.telefono : 'No disponible';
 
-    final universidadesPorCodigo = <String, String>{};
-    for (final universidad in universidades) {
-      final codigo = universidad['codigo'] as String?;
-      final nombre = universidad['nombre'] as String?;
-      if (codigo != null && codigo.isNotEmpty && nombre != null && nombre.isNotEmpty) {
-        universidadesPorCodigo[codigo] = nombre;
-      }
-    }
-
-    final liceoRbd = liceoData?['rbd_liceo'] as String? ?? '';
-    final liceoNombre = liceoData?['nombre'] as String? ?? 'No disponible';
-    final ramosAyudaPorRut = <String, List<String>>{};
-    for (final ramo in ramosPuedoAyudar) {
-      ramosAyudaPorRut.putIfAbsent(ramo.rutEstudiante, () => []);
-      ramosAyudaPorRut[ramo.rutEstudiante]!.add(ramo.nombre);
-    }
-
-    final items = <BecarioItem>[];
-    for (final estudiante in estudiantes) {
-      final rut = estudiante['rut_estudiante'] as String? ?? '';
-      final carrera = carrerasPorRut[rut];
-      final codigoUniversidad =
-          carrera?['codigo_universidad'] as String? ?? 'No disponible';
-        final nombreUniversidad = universidadesPorCodigo[codigoUniversidad] ?? codigoUniversidad;
-      final nombreCarrera =
-          carrera?['nombre'] as String? ?? 'No disponible';
-      final rbd = estudiante['rbd_liceo'] as String? ?? '';
-      final liceo = rbd.isNotEmpty && rbd == liceoRbd
-          ? liceoNombre
-          : 'No disponible';
-
-      items.add(
-        BecarioItem(
-          rut: rut,
-          nombre: estudiante['nombre'] as String? ?? 'Sin nombre',
-          apellido: estudiante['apellido'] as String? ?? '',
-          universidad: nombreUniversidad,
-          carrera: nombreCarrera,
-          liceo: liceo,
-          generacion: estudiante['generacion'] as int? ?? 0,
-          telefono: estudiante['telefono'] as String? ?? 'No disponible',
-          esUsuarioActual: rut == estudianteActual.rutEstudiante,
-          ramosPuedoAyudar: ramosAyudaPorRut[rut] ?? const [],
-        ),
+      return BecarioItem(
+        rut: est.rutEstudiante,
+        nombre: est.nombre,
+        apellido: est.apellido,
+        fotoUrl: est.fotoUrl,
+        universidad: univNombre,
+        carrera: carreraNombre,
+        liceo: liceoNombre,
+        generacion: generacionAnio,
+        telefono: telefono,
+        esUsuarioActual: est.rutEstudiante == propio.rutEstudiante,
       );
-    }
+    }).toList();
 
-    final actual = items.isNotEmpty ? items.first : null;
-
-    return _BecariosData(actual: actual, items: items);
+    return _BecariosData(
+      items: items,
+      rutPropio: propio.rutEstudiante,
+      propioGeneracion: propio.generacionRel?.anio ?? propio.generacionId,
+      propioUniversidad:
+          propio.carreras.firstOrNull?.universidad?.nombre,
+      propioLiceoNombre: propio.liceo?.nombre,
+    );
   }
 
-  List<BecarioItem> _filtrar(
-    List<BecarioItem> items,
-    BecarioItem? actual,
-  ) {
+  List<BecarioItem> _filtrar(List<BecarioItem> items, _BecariosData data) {
     final query = _query.toLowerCase();
     return items.where((item) {
+      // Búsqueda reactiva por nombre, universidad y liceo.
       if (query.isNotEmpty) {
-        final nombreCompleto = item.nombreCompleto.toLowerCase();
-        if (!nombreCompleto.contains(query)) return false;
+        final matchNombre = item.nombreCompleto.toLowerCase().contains(query);
+        final matchUniv = item.universidad.toLowerCase().contains(query);
+        final matchLiceo = item.liceo.toLowerCase().contains(query);
+        if (!matchNombre && !matchUniv && !matchLiceo) return false;
       }
 
-      if (actual == null) return true;
-      if (_filtroUniversidad && item.universidad != actual.universidad) {
-        return false;
+      // Filtro "Mi U" — solo cuando hay universidad propia registrada.
+      if (_filtroUniversidad && data.propioUniversidad != null) {
+        if (item.universidad != data.propioUniversidad) return false;
       }
-      if (_filtroCarrera && item.carrera != actual.carrera) {
-        return false;
+
+      // Filtro "Mi Generación".
+      if (_filtroGeneracion) {
+        if (item.generacion != data.propioGeneracion) return false;
       }
-      if (_filtroLiceo && item.liceo != actual.liceo) {
-        return false;
+
+      // Filtro "Mi Liceo" — solo cuando hay liceo propio registrado.
+      if (_filtroLiceo && data.propioLiceoNombre != null) {
+        if (item.liceo != data.propioLiceoNombre) return false;
       }
+
       return true;
     }).toList();
   }
@@ -170,23 +117,55 @@ class _Page3State extends State<Page3> {
       future: _dataFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
           return Center(
-            child: Text(
-              'Error al cargar becarios',
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.becarios.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Cargando becarios...',
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
           );
         }
 
-        final data = snapshot.data ?? _BecariosData(items: [], actual: null);
-        final filtrados = _filtrar(data.items, data.actual);
-        final tieneFiltros =
-            _filtroUniversidad || _filtroCarrera || _filtroLiceo || _query.isNotEmpty;
-        final todosActivos = !tieneFiltros;
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Colors.red.withValues(alpha: 0.7),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Error al cargar becarios',
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final data = snapshot.data ?? _BecariosData.empty();
+        final filtrados = _filtrar(data.items, data);
+        final tieneFiltros = _filtroUniversidad ||
+            _filtroGeneracion ||
+            _filtroLiceo ||
+            _query.isNotEmpty;
 
         return Column(
           children: [
@@ -194,7 +173,7 @@ class _Page3State extends State<Page3> {
             const SizedBox(height: 14),
             _buildSearchBar(isDark),
             const SizedBox(height: 12),
-            _buildFiltersRow(todosActivos, isDark),
+            _buildFiltersRow(data, !tieneFiltros, isDark),
             const SizedBox(height: 8),
             _buildCountRow(filtrados.length),
             const SizedBox(height: 8),
@@ -204,11 +183,9 @@ class _Page3State extends State<Page3> {
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       itemCount: filtrados.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        return _buildCard(filtrados[index], isDark);
-                      },
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (_, index) =>
+                          _buildCard(filtrados[index], isDark),
                     ),
             ),
           ],
@@ -223,13 +200,11 @@ class _Page3State extends State<Page3> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: BoxDecoration(
         color: AppColors.becarios,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(20),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text(
             'Red de apoyo',
             style: TextStyle(
@@ -253,20 +228,22 @@ class _Page3State extends State<Page3> {
   }
 
   Widget _buildSearchBar(bool isDark) {
-    final fillColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final hintColor = isDark ? Colors.white54 : Colors.grey.shade500;
-    final iconColor = isDark ? Colors.white54 : Colors.grey.shade500;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: TextField(
         controller: _searchController,
         style: TextStyle(color: isDark ? Colors.white : Colors.black87),
         decoration: InputDecoration(
-          prefixIcon: Icon(Icons.search, color: iconColor),
-          hintText: 'Buscar becario...',
-          hintStyle: TextStyle(color: hintColor),
+          prefixIcon: Icon(
+            Icons.search,
+            color: isDark ? Colors.white54 : Colors.grey.shade500,
+          ),
+          hintText: 'Buscar por nombre, universidad o liceo...',
+          hintStyle: TextStyle(
+            color: isDark ? Colors.white54 : Colors.grey.shade500,
+          ),
           filled: true,
-          fillColor: fillColor,
+          fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30),
@@ -277,7 +254,7 @@ class _Page3State extends State<Page3> {
     );
   }
 
-  Widget _buildFiltersRow(bool todosActivos, bool isDark) {
+  Widget _buildFiltersRow(_BecariosData data, bool todosActivos, bool isDark) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -289,35 +266,32 @@ class _Page3State extends State<Page3> {
             label: 'Mi U',
             icon: Icons.apartment,
             selected: _filtroUniversidad,
+            enabled: data.puedeUniversidad,
             isDark: isDark,
             onTap: () {
-              setState(() {
-                _filtroUniversidad = !_filtroUniversidad;
-              });
+              if (!data.puedeUniversidad) return;
+              setState(() => _filtroUniversidad = !_filtroUniversidad);
             },
           ),
           const SizedBox(width: 8),
           _buildToggleChip(
-            label: 'Mi Carrera',
-            icon: Icons.school,
-            selected: _filtroCarrera,
+            label: 'Mi Generación',
+            icon: Icons.calendar_today,
+            selected: _filtroGeneracion,
+            enabled: true,
             isDark: isDark,
-            onTap: () {
-              setState(() {
-                _filtroCarrera = !_filtroCarrera;
-              });
-            },
+            onTap: () => setState(() => _filtroGeneracion = !_filtroGeneracion),
           ),
           const SizedBox(width: 8),
           _buildToggleChip(
             label: 'Mi Liceo',
             icon: Icons.account_balance,
             selected: _filtroLiceo,
+            enabled: data.puedeLiceo,
             isDark: isDark,
             onTap: () {
-              setState(() {
-                _filtroLiceo = !_filtroLiceo;
-              });
+              if (!data.puedeLiceo) return;
+              setState(() => _filtroLiceo = !_filtroLiceo);
             },
           ),
         ],
@@ -328,18 +302,21 @@ class _Page3State extends State<Page3> {
   Widget _buildTodosChip(bool activo, bool isDark) {
     final color = AppColors.misNotas;
     final inactiveBorder = isDark ? Colors.white24 : Colors.grey.shade300;
-    final textColor = activo ? Colors.white : (isDark ? Colors.white60 : Colors.grey.shade600);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: activo ? color : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: activo ? color.withValues(alpha: 0.6) : inactiveBorder),
+        border: Border.all(
+          color: activo ? color.withValues(alpha: 0.6) : inactiveBorder,
+        ),
       ),
       child: Text(
         'Todos',
         style: TextStyle(
-          color: textColor,
+          color: activo
+              ? Colors.white
+              : (isDark ? Colors.white60 : Colors.grey.shade600),
           fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
@@ -351,30 +328,35 @@ class _Page3State extends State<Page3> {
     required String label,
     required IconData icon,
     required bool selected,
+    required bool enabled,
     required bool isDark,
     required VoidCallback onTap,
   }) {
-    final color = selected
-        ? AppColors.becarios
+    final activeColor = AppColors.becarios;
+    final chipColor = selected
+        ? activeColor
         : (isDark ? const Color(0xFF2A2A2A) : Colors.white);
-    final textColor = selected
-        ? Colors.white
-        : (isDark ? Colors.white70 : Colors.black87);
-    final borderColor = selected
-        ? AppColors.becarios
-        : (isDark ? Colors.white24 : Colors.grey.shade300);
+    final textColor = !enabled
+        ? (isDark ? Colors.white30 : Colors.grey.shade400)
+        : selected
+            ? Colors.white
+            : (isDark ? Colors.white70 : Colors.black87);
+    final borderColor = !enabled
+        ? (isDark ? Colors.white12 : Colors.grey.shade200)
+        : selected
+            ? activeColor
+            : (isDark ? Colors.white24 : Colors.grey.shade300);
+
     return InkWell(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: color,
+          color: chipColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: borderColor,
-          ),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
@@ -397,16 +379,12 @@ class _Page3State extends State<Page3> {
   Widget _buildCountRow(int count) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Text(
-            '$count becarios encontrados',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      child: Text(
+        '$count becarios encontrados',
+        style: TextStyle(
+          color: Colors.grey.shade600,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -421,18 +399,17 @@ class _Page3State extends State<Page3> {
   }
 
   Widget _buildCard(BecarioItem item, bool isDark) {
-    final cardColor = isDark ? const Color(0xFF1D1D1D) : Colors.white;
-    final borderColor = isDark ? Colors.white12 : Colors.black12;
-
     return InkWell(
       onTap: () => _mostrarDetalle(item),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: cardColor,
+          color: isDark ? const Color(0xFF1D1D1D) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black12,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -467,7 +444,7 @@ class _Page3State extends State<Page3> {
                     ),
                   ),
                   if (item.esUsuarioActual) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       'Tu perfil',
                       style: TextStyle(
@@ -493,24 +470,6 @@ class _Page3State extends State<Page3> {
                       fontSize: 12,
                     ),
                   ),
-                  if (item.ramosPuedoAyudar.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: item.ramosPuedoAyudar
-                          .map(
-                            (ramo) => Chip(
-                              visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              label: Text(ramo, style: const TextStyle(fontSize: 11)),
-                              backgroundColor: AppColors.becarios.withValues(alpha: 0.12),
-                              side: BorderSide(color: AppColors.becarios.withValues(alpha: 0.2)),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -529,16 +488,32 @@ class _Page3State extends State<Page3> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) {
-        return BecarioDetailSheet(item: item);
-      },
+      builder: (_) => BecarioDetailSheet(item: item),
     );
   }
 }
 
 class _BecariosData {
   final List<BecarioItem> items;
-  final BecarioItem? actual;
+  final String rutPropio;
+  final int propioGeneracion;
+  final String? propioUniversidad;
+  final String? propioLiceoNombre;
 
-  _BecariosData({required this.items, required this.actual});
+  _BecariosData({
+    required this.items,
+    required this.rutPropio,
+    required this.propioGeneracion,
+    this.propioUniversidad,
+    this.propioLiceoNombre,
+  });
+
+  factory _BecariosData.empty() => _BecariosData(
+        items: [],
+        rutPropio: '',
+        propioGeneracion: 0,
+      );
+
+  bool get puedeUniversidad => propioUniversidad != null;
+  bool get puedeLiceo => propioLiceoNombre != null;
 }

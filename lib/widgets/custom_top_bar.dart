@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:carmen_goudie/models/estudiante.dart';
 import 'package:carmen_goudie/services/estudiante_service.dart';
-import 'package:carmen_goudie/pages/page5.dart';
+import 'package:carmen_goudie/services/usuario_service.dart';
+import 'package:carmen_goudie/pages/notificaciones_page.dart';
 import 'package:carmen_goudie/services/notification_service.dart';
 
 /// Widget personalizado para la barra superior de la aplicación
 class CustomAppBar extends StatefulWidget {
   final bool isDarkMode;
   final VoidCallback onThemeToggle;
+  final VoidCallback onLogout;
 
   const CustomAppBar({
     super.key,
     required this.isDarkMode,
     required this.onThemeToggle,
+    required this.onLogout,
   });
 
   @override
@@ -32,7 +35,7 @@ class _CustomAppBarState extends State<CustomAppBar>
       vsync: this,
     );
     // Cargar datos del estudiante
-    _estudianteFuture = EstudianteService.obtenerEstudianteActual();
+    _estudianteFuture = EstudianteService.obtenerPerfilPropio();
     NotificationService.refrescarContador();
   }
 
@@ -42,14 +45,75 @@ class _CustomAppBarState extends State<CustomAppBar>
     super.dispose();
   }
 
+  Widget _buildLeadingAvatar(
+    AsyncSnapshot<Estudiante> snapshot,
+    Color circleBg,
+    bool isDark,
+  ) {
+    final fotoUrl = snapshot.hasData ? snapshot.data!.fotoUrl : null;
+    final tieneFoto = fotoUrl != null && fotoUrl.isNotEmpty;
+
+    if (tieneFoto) {
+      return ClipOval(
+        child: Image.network(
+          fotoUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildInitiales(snapshot, circleBg, isDark),
+          loadingBuilder: (context, child, progress) =>
+              progress == null ? child : _buildInitiales(snapshot, circleBg, isDark),
+        ),
+      );
+    }
+    return _buildInitiales(snapshot, circleBg, isDark);
+  }
+
+  Widget _buildInitiales(
+    AsyncSnapshot<Estudiante> snapshot,
+    Color circleBg,
+    bool isDark,
+  ) {
+    String iniciales = 'CG';
+    if (snapshot.hasData) {
+      final est = snapshot.data!;
+      final n = est.nombre.isNotEmpty ? est.nombre[0] : '';
+      final a = est.apellido.isNotEmpty ? est.apellido[0] : '';
+      iniciales = (n + a).toUpperCase();
+      if (iniciales.isEmpty) iniciales = 'CG';
+    }
+    return Container(
+      decoration: BoxDecoration(shape: BoxShape.circle, color: circleBg),
+      child: Center(
+        child: Text(
+          iniciales,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.grey[700],
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _onBellTap() {
     // Reproducir animación de campana
     _bellAnimationController.forward().then((_) {
       _bellAnimationController.reverse();
     });
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const Page5Wrapper()),
+      MaterialPageRoute(builder: (_) => const NotificacionesPageWrapper()),
     );
+  }
+
+  Future<void> _onLogoutTap() async {
+    // cerrarSesion() limpia los tokens (y nunca lanza: maneja el error en su
+    // finally). Luego avisamos a la app para volver al login.
+    await UsuarioService.cerrarSesion();
+    if (!mounted) return;
+    widget.onLogout();
   }
 
   @override
@@ -70,31 +134,11 @@ class _CustomAppBarState extends State<CustomAppBar>
         padding: const EdgeInsets.all(8.0),
         child: FutureBuilder<Estudiante>(
           future: _estudianteFuture,
-          builder: (context, snapshot) {
-            String iniciales = 'CG';
-            if (snapshot.hasData) {
-              final estudiante = snapshot.data!;
-              iniciales =
-                  '${estudiante.nombre[0]}${estudiante.apellido[0]}'
-                      .toUpperCase();
-            }
-            return Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: circleBackgroundColor,
-              ),
-              child: Center(
-                child: Text(
-                  iniciales,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.grey[700],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            );
-          },
+          builder: (context, snapshot) => _buildLeadingAvatar(
+            snapshot,
+            circleBackgroundColor,
+            isDark,
+          ),
         ),
       ),
       title: FutureBuilder<Estudiante>(
@@ -260,6 +304,22 @@ class _CustomAppBarState extends State<CustomAppBar>
                 ],
               );
             },
+          ),
+        ),
+        // Botón de cerrar sesión
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: CircleAvatar(
+            backgroundColor: circleBackgroundColor,
+            child: IconButton(
+              icon: Icon(
+                Icons.logout,
+                color: iconColor,
+                size: 20,
+              ),
+              onPressed: _onLogoutTap,
+              tooltip: 'Cerrar sesión',
+            ),
           ),
         ),
         const SizedBox(width: 8),

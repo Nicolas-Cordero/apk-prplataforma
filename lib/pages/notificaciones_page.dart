@@ -4,14 +4,14 @@ import 'package:carmen_goudie/services/notification_service.dart';
 import 'package:carmen_goudie/widgets/app_background.dart';
 
 /// Página de notificaciones
-class Page5 extends StatefulWidget {
-  const Page5({super.key});
+class NotificacionesPage extends StatefulWidget {
+  const NotificacionesPage({super.key});
 
   @override
-  State<Page5> createState() => _Page5State();
+  State<NotificacionesPage> createState() => _NotificacionesPageState();
 }
 
-class _Page5State extends State<Page5> {
+class _NotificacionesPageState extends State<NotificacionesPage> {
   late Future<List<AppNotification>> _notificacionesFuture;
 
   @override
@@ -182,12 +182,12 @@ class _Page5State extends State<Page5> {
   }
 }
 
-/// Wrapper para mostrar Page5 dentro de `AppBackground` cuando se navega desde la barra superior
-class Page5Wrapper extends StatelessWidget {
-  const Page5Wrapper({super.key});
+/// Wrapper para mostrar NotificacionesPage dentro de `AppBackground` cuando se navega desde la barra superior
+class NotificacionesPageWrapper extends StatelessWidget {
+  const NotificacionesPageWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppBackground(child: const Page5());
+    return AppBackground(child: const NotificacionesPage());
   }
 }
