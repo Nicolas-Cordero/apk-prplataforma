@@ -4,13 +4,13 @@ import 'package:carmen_goudie/services/ramo_service.dart';
 // ── Modelo ────────────────────────────────────────────────────────────────────
 
 class Semestre {
-  /// String del semestre_id (int del backend), para compat con mis_notas_page
-  /// y PromedioFinalService que comparan IDs como String.
+  /// String del semestre_id (int del backend), para compat con mis_notas_page.
   final String id;
   final String nombre;    // Ej: "2025-1", "2025-2", "2025-Inv"
   final int anio;
   final int numeroSemestre; // 1=PRIMER, 2=SEGUNDO, 3=INVIERNO, 4=VERANO
   final bool esActual;
+  final bool esRecuperativo;
 
   const Semestre({
     required this.id,
@@ -18,18 +18,21 @@ class Semestre {
     required this.anio,
     required this.numeroSemestre,
     required this.esActual,
+    this.esRecuperativo = false,
   });
 
   factory Semestre.fromJson(Map<String, dynamic> json, {bool esActual = false}) {
     final semestreId = json['semestre_id'] as int;
     final year = json['year'] as int;
     final codigo = json['semestre'] as String;
+    final tipo = json['tipo'] as String? ?? 'REGULAR';
     return Semestre(
       id: semestreId.toString(),
       nombre: _buildNombre(year, codigo),
       anio: year,
       numeroSemestre: _buildNumero(codigo),
       esActual: esActual,
+      esRecuperativo: tipo == 'RECUPERATIVO',
     );
   }
 
@@ -39,6 +42,7 @@ class Semestre {
         anio: anio,
         numeroSemestre: numeroSemestre,
         esActual: esActual ?? this.esActual,
+        esRecuperativo: esRecuperativo,
       );
 
   static String _buildNombre(int year, String codigo) {
@@ -93,40 +97,61 @@ class SemestreService {
 
   /// Determina el semestre actual obteniendo primero los ramos, luego los
   /// semestres correspondientes (sin traer semestres innecesarios).
-  static Future<Semestre> obtenerSemestreActual() async {
+  /// Devuelve null si no hay ningún semestre abierto.
+  static Future<Semestre?> obtenerSemestreActual() async {
     final ramos = await RamoService.obtenerMisRamos();
     final ids = ramos.map((r) => int.parse(r.semestreId)).toSet();
     final semestres = await obtenerPorIds(ids);
     return _determinarActual(semestres, ramos);
   }
 
-  /// Marca como actual el semestre más reciente con al menos un ramo CURSANDO.
-  /// Si ninguno cumple la condición, devuelve el más reciente con esActual=false.
-  static Semestre _determinarActual(
+  /// Devuelve semestres vinculados a una carrera vía la tabla pivot
+  /// (incluye semestres vacíos creados por el admin).
+  static Future<List<Semestre>> obtenerPorCarrera(int codigoCarrera) async {
+    final response =
+        await ApiService.get('/semestre/by-carrera/$codigoCarrera');
+    final list = response.data as List<dynamic>;
+    return list
+        .map((e) => Semestre.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Devuelve el semestre "abierto" siguiendo este orden de prioridad:
+  /// 1. El semestre más reciente con al menos un ramo CURSANDO.
+  /// 2. Si ninguno tiene CURSANDO, el semestre más reciente sin ningún ramo
+  ///    (semestre vacío creado por el admin para el estudiante).
+  /// 3. null si todos los semestres están cerrados.
+  static Semestre? _determinarActual(
       List<Semestre> semestres, List<Ramo> ramos) {
-    final abiertoIds = ramos
+    final cursandoIds = ramos
         .where((r) => r.estado == EstadoRamo.CURSANDO)
         .map((r) => r.semestreId)
         .toSet();
 
     for (final s in semestres.reversed) {
-      if (abiertoIds.contains(s.id)) return s.copyWith(esActual: true);
+      if (cursandoIds.contains(s.id)) return s.copyWith(esActual: true);
     }
 
-    return semestres.isNotEmpty
-        ? semestres.last.copyWith(esActual: false)
-        : Semestre(
-            id: '', nombre: 'Sin semestre', anio: 0,
-            numeroSemestre: 0, esActual: false,
-          );
+    // Semestre vacío (sin ningún ramo): el admin lo creó para que el
+    // estudiante empiece a agregar ramos.
+    final conRamosIds = ramos.map((r) => r.semestreId).toSet();
+    for (final s in semestres.reversed) {
+      if (!conRamosIds.contains(s.id)) return s.copyWith(esActual: true);
+    }
+
+    return null;
   }
 
   /// Aplica esActual a cada semestre de la lista según los ramos existentes.
+  /// Si ningún semestre tiene ramos CURSANDO, todos quedan con esActual=false.
   static List<Semestre> marcarActual(
       List<Semestre> semestres, List<Ramo> ramos) {
-    final actualId = _determinarActual(semestres, ramos).id;
+    final actual = _determinarActual(semestres, ramos);
+    if (actual == null) {
+      return semestres.map((s) => s.copyWith(esActual: false)).toList();
+    }
     return semestres
-        .map((s) => s.copyWith(esActual: s.id == actualId))
+        .map((s) => s.copyWith(esActual: s.id == actual.id))
         .toList();
   }
 }

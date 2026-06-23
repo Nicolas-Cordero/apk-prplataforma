@@ -55,20 +55,36 @@ class _MisRamosPageState extends State<MisRamosPage> {
       _errorCarga = null;
     });
     try {
-      // 1. Obtener ramos primero para saber qué semestres necesitamos.
-      final ramos = await RamoService.obtenerMisRamos();
-
-      // 2. Con los IDs de semestre conocidos, pedir solo esos (no todos).
-      final semestreIds = ramos.map((r) => int.parse(r.semestreId)).toSet();
-      final (semestres, perfil) = await (
-        SemestreService.obtenerPorIds(semestreIds),
+      // 1. Ramos + perfil en paralelo.
+      final (ramos, perfil) = await (
+        RamoService.obtenerMisRamos(),
         EstudianteService.obtenerPerfilPropio(),
       ).wait;
 
-      final semestresConFlag = SemestreService.marcarActual(semestres, ramos);
-      final actual = semestresConFlag.where((s) => s.esActual).firstOrNull;
       final codigoCarrera = perfil.carreras.firstOrNull?.codigoCarrera
           ?? ramos.firstOrNull?.codigoCarrera;
+
+      // 2. Semestres desde ramos + semestres del pivot (incluye vacíos).
+      final semestreIds = ramos.map((r) => int.parse(r.semestreId)).toSet();
+      final resultados = await Future.wait([
+        SemestreService.obtenerPorIds(semestreIds),
+        if (codigoCarrera != null)
+          SemestreService.obtenerPorCarrera(codigoCarrera),
+      ]);
+      final desdeRamos = resultados[0];
+      final desdeCarrera = resultados.length > 1 ? resultados[1] : <Semestre>[];
+
+      // Fusionar: agregar los del pivot que no vienen de ramos.
+      final vistosIds = desdeRamos.map((s) => s.id).toSet();
+      final extras = desdeCarrera.where((s) => !vistosIds.contains(s.id));
+      final todosSemestres = [...desdeRamos, ...extras]
+        ..sort((a, b) {
+          final cmp = a.anio.compareTo(b.anio);
+          return cmp != 0 ? cmp : a.numeroSemestre.compareTo(b.numeroSemestre);
+        });
+
+      final semestresConFlag = SemestreService.marcarActual(todosSemestres, ramos);
+      final actual = semestresConFlag.where((s) => s.esActual).firstOrNull;
 
       setState(() {
         _ramos = ramos;
@@ -231,6 +247,13 @@ class _MisRamosPageState extends State<MisRamosPage> {
     try {
       if (ramoEditar == null) {
         // Crear
+        if (_semestreActual!.esRecuperativo) {
+          final yaHayRamo = _ramos.any((r) => r.semestreId == _semestreActual!.id);
+          if (yaHayRamo) {
+            errorCallback('Los semestres recuperativos solo pueden tener un ramo.');
+            return false;
+          }
+        }
         final semestreId = int.parse(_semestreActual!.id);
         final codigoCarrera = _codigoCarrera!;
         final nuevo = await RamoService.crearRamo(
@@ -269,14 +292,6 @@ class _MisRamosPageState extends State<MisRamosPage> {
       errorCallback('No se pudo guardar el ramo. Intenta de nuevo.');
       return false;
     }
-  }
-
-  /// Toggle "Puedo ayudar" — local únicamente, no persiste en el backend.
-  void _togglePuedoAyudar(Ramo item, bool value) {
-    setState(() {
-      final idx = _ramos.indexWhere((r) => r.id == item.id);
-      if (idx >= 0) _ramos[idx] = _ramos[idx].copyWith(puedoAyudar: value);
-    });
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -353,53 +368,56 @@ class _MisRamosPageState extends State<MisRamosPage> {
         _buildSemesterSelector(),
         const SizedBox(height: 12),
         Expanded(
-          child: ramosSemestre.isEmpty
-              ? ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  children: [
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 24),
-                      child: Center(
-                        child: Text(
-                          _semestreActual == null && _semestres.isEmpty
-                              ? 'No tienes semestres registrados'
-                              : _semestreActual == null
-                                  ? 'No tienes semestre activo.\nContacta a tu tutor.'
-                                  : 'No hay ramos registrados para este semestre',
-                          textAlign: TextAlign.center,
-                          style:
-                              const TextStyle(fontSize: 14, color: Colors.grey),
+          child: RefreshIndicator(
+            onRefresh: _cargarDatos,
+            color: AppColors.misRamos,
+            child: ramosSemestre.isEmpty
+                ? ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    children: [
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 24),
+                        child: Center(
+                          child: Text(
+                            _semestreActual == null && _semestres.isEmpty
+                                ? 'No tienes semestres registrados'
+                                : _semestreActual == null
+                                    ? 'No tienes semestre activo.\nContacta a tu tutor.'
+                                    : 'No hay ramos registrados para este semestre',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
                         ),
                       ),
-                    ),
-                    if (puedeAgregar) ...[
-                      const SizedBox(height: 16),
-                      _buildAgregarRamoCard(isDark),
+                      if (puedeAgregar) ...[
+                        const SizedBox(height: 16),
+                        _buildAgregarRamoCard(isDark),
+                      ],
                     ],
-                  ],
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: ramosSemestre.length + (puedeAgregar ? 1 : 0),
-                  separatorBuilder: (context, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    if (index == ramosSemestre.length) {
-                      return Column(
-                        children: [
-                          _buildListDivider(isDark),
-                          const SizedBox(height: 12),
-                          _buildAgregarRamoCard(isDark),
-                        ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: ramosSemestre.length + (puedeAgregar ? 1 : 0),
+                    separatorBuilder: (context, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      if (index == ramosSemestre.length) {
+                        return Column(
+                          children: [
+                            _buildListDivider(isDark),
+                            const SizedBox(height: 12),
+                            _buildAgregarRamoCard(isDark),
+                          ],
+                        );
+                      }
+                      return _buildRamoCard(
+                        ramosSemestre[index],
+                        isDark,
+                        esActual: semestreVisible?.esActual == true,
                       );
-                    }
-                    return _buildRamoCard(
-                      ramosSemestre[index],
-                      isDark,
-                      esActual: semestreVisible?.esActual == true,
-                    );
-                  },
-                ),
+                    },
+                  ),
+          ),
         ),
       ],
     );
@@ -536,6 +554,7 @@ class _MisRamosPageState extends State<MisRamosPage> {
     final cardColor =
         isDark ? const Color(0xFF1D1D1D) : AppColors.pageBackground;
     final borderColor = isDark ? Colors.white12 : Colors.black12;
+    final secondaryText = isDark ? Colors.white70 : Colors.grey.shade600;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -551,94 +570,64 @@ class _MisRamosPageState extends State<MisRamosPage> {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: AppColors.misRamos.withValues(alpha: 0.12),
-                child: Icon(Icons.menu_book, color: AppColors.misRamos),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.nombre,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          'Intento ${item.intento}',
-                          style: TextStyle(
-                            color: isDark
-                                ? Colors.white70
-                                : Colors.grey.shade600,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildEstadoBadge(item.estado),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (esActual)
-                InkWell(
-                  onTap: () => _abrirFormularioRamo(ramoEditar: item),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.misRamos.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.edit,
-                      size: 16,
-                      color: AppColors.misRamos,
-                    ),
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: AppColors.misRamos.withValues(alpha: 0.12),
+            child: Icon(Icons.menu_book, color: AppColors.misRamos),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.nombre,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
-            ],
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      'Intento ${item.intento}',
+                      style: TextStyle(color: secondaryText, fontSize: 12),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildEstadoBadge(item.estado),
+                  ],
+                ),
+                if (item.notaFinal != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Nota: ${item.notaFinal!.toStringAsFixed(1)}',
+                    style: TextStyle(color: secondaryText, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
           ),
-          if (!esActual) ...[
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilterChip(
-                selected: item.puedoAyudar,
-                onSelected: (value) => _togglePuedoAyudar(item, value),
-                label: const Text('Puedo ayudar'),
-                avatar: Icon(
-                  item.puedoAyudar
-                      ? Icons.check_circle
-                      : Icons.volunteer_activism,
-                  size: 18,
-                  color: item.puedoAyudar ? Colors.white : AppColors.misRamos,
+          if (esActual)
+            InkWell(
+              onTap: () => _abrirFormularioRamo(ramoEditar: item),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.misRamos.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                backgroundColor: AppColors.pageBackground,
-                selectedColor: AppColors.misRamos,
-                checkmarkColor: Colors.white,
-                labelStyle: TextStyle(
-                  color: item.puedoAyudar ? Colors.white : AppColors.misRamos,
-                  fontWeight: FontWeight.w600,
-                ),
-                side: BorderSide(
-                  color: AppColors.misRamos.withValues(alpha: 0.35),
+                child: Icon(
+                  Icons.edit,
+                  size: 16,
+                  color: AppColors.misRamos,
                 ),
               ),
             ),
-          ],
         ],
       ),
     );

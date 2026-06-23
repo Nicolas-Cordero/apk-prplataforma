@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:carmen_goudie/services/api_service.dart';
 
 // ── Enum ─────────────────────────────────────────────────────────────────────
@@ -19,8 +20,7 @@ extension EstadoRamoX on EstadoRamo {
 // ── Modelo ────────────────────────────────────────────────────────────────────
 
 class Ramo {
-  /// id y semestreId se guardan como String para compatibilidad con
-  /// mis_notas_page y PromedioFinalService (que los comparan como String).
+  /// id y semestreId se guardan como String para compatibilidad con mis_notas_page.
   final String id;
   final String semestreId;
   final String rutEstudiante;
@@ -30,8 +30,7 @@ class Ramo {
   final String comentario;
   final int intento;
   final double? notaFinal;
-  /// Local únicamente: no viene del backend ni se envía en ningún DTO.
-  final bool puedoAyudar;
+  final String? urlCertificado;
 
   const Ramo({
     required this.id,
@@ -43,7 +42,7 @@ class Ramo {
     required this.comentario,
     required this.intento,
     this.notaFinal,
-    this.puedoAyudar = false,
+    this.urlCertificado,
   });
 
   factory Ramo.fromJson(Map<String, dynamic> json) => Ramo(
@@ -55,15 +54,20 @@ class Ramo {
         estado: _parseEstado(json['estado'] as String? ?? 'CURSANDO'),
         comentario: json['comentario'] as String? ?? '',
         intento: json['intento'] as int? ?? 1,
-        notaFinal: json['nota_final'] != null
-            ? (json['nota_final'] as num).toDouble()
-            : null,
+        notaFinal: _parseDecimal(json['nota_final']),
+        urlCertificado: json['url_certificado'] as String?,
       );
+
+  // Prisma serializa Decimal como String en JSON, no como num.
+  static double? _parseDecimal(dynamic v) {
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v);
+    return null;
+  }
 
   Ramo copyWith({
     String? nombre,
     EstadoRamo? estado,
-    bool? puedoAyudar,
   }) =>
       Ramo(
         id: id,
@@ -75,7 +79,7 @@ class Ramo {
         comentario: comentario,
         intento: intento,
         notaFinal: notaFinal,
-        puedoAyudar: puedoAyudar ?? this.puedoAyudar,
+        urlCertificado: urlCertificado,
       );
 
   static EstadoRamo _parseEstado(String s) {
@@ -112,13 +116,15 @@ class CreateRamoDto {
 class UpdateRamoDto {
   final String? nombre;
   final EstadoRamo? estado;
+  final double? notaFinal;
 
-  const UpdateRamoDto({this.nombre, this.estado});
+  const UpdateRamoDto({this.nombre, this.estado, this.notaFinal});
 
   Map<String, dynamic> toJson() {
     final m = <String, dynamic>{};
     if (nombre != null) m['nombre'] = nombre;
     if (estado != null) m['estado'] = estado!.name;
+    if (notaFinal != null) m['nota_final'] = notaFinal;
     return m;
   }
 }
@@ -144,10 +150,30 @@ class RamoService {
     return Ramo.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// PATCH /ramo/me/:id_ramo — actualiza nombre o estado de un ramo propio.
+  /// PATCH /ramo/me/:id_ramo — actualiza nombre, estado o nota_final.
   static Future<Ramo> actualizarRamo(int idRamo, UpdateRamoDto dto) async {
     final response =
         await ApiService.patch('/ramo/me/$idRamo', data: dto.toJson());
+    return Ramo.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// POST /ramo/me/:id_ramo/certificado — sube el PDF del certificado de notas.
+  static Future<Ramo> subirCertificado(
+    int idRamo,
+    List<int> bytes,
+    String filename,
+  ) async {
+    final formData = FormData.fromMap({
+      'certificado': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: DioMediaType('application', 'pdf'),
+      ),
+    });
+    final response = await ApiService.post(
+      '/ramo/me/$idRamo/certificado',
+      data: formData,
+    );
     return Ramo.fromJson(response.data as Map<String, dynamic>);
   }
 }

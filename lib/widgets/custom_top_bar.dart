@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:carmen_goudie/models/estudiante.dart';
 import 'package:carmen_goudie/services/estudiante_service.dart';
@@ -27,6 +28,13 @@ class _CustomAppBarState extends State<CustomAppBar>
   late AnimationController _bellAnimationController;
   late Future<Estudiante> _estudianteFuture;
 
+  // Cache compartido entre instancias del widget (navegación entre pantallas).
+  // Evita el flash de 'CG' y llamadas redundantes a /estudiante/me.
+  static Estudiante? _cachedEstudiante;
+
+  /// Limpia el cache al cerrar sesión.
+  static void clearCache() => _cachedEstudiante = null;
+
   @override
   void initState() {
     super.initState();
@@ -34,8 +42,16 @@ class _CustomAppBarState extends State<CustomAppBar>
       duration: const Duration(milliseconds: 250),
       vsync: this,
     );
-    // Cargar datos del estudiante
-    _estudianteFuture = EstudianteService.obtenerPerfilPropio();
+    // Si ya hay datos en cache, los usamos de forma síncrona (sin flash de 'CG').
+    // Si no, hacemos el fetch y guardamos el resultado en cache.
+    if (_cachedEstudiante != null) {
+      _estudianteFuture = SynchronousFuture(_cachedEstudiante!);
+    } else {
+      _estudianteFuture = EstudianteService.obtenerPerfilPropio().then((est) {
+        _cachedEstudiante = est;
+        return est;
+      });
+    }
     NotificationService.refrescarContador();
   }
 
@@ -111,6 +127,7 @@ class _CustomAppBarState extends State<CustomAppBar>
   Future<void> _onLogoutTap() async {
     // cerrarSesion() limpia los tokens (y nunca lanza: maneja el error en su
     // finally). Luego avisamos a la app para volver al login.
+    clearCache();
     await UsuarioService.cerrarSesion();
     if (!mounted) return;
     widget.onLogout();

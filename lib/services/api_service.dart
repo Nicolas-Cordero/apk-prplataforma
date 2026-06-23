@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,6 +20,11 @@ class ApiService {
   ));
 
   static bool _interceptorMounted = false;
+
+  // Mutex para serializar refreshes concurrentes: solo uno corre a la vez,
+  // los demás esperan su resultado en lugar de disparar otro POST /auth/refresh.
+  static bool _isRefreshing = false;
+  static Completer<bool>? _refreshCompleter;
 
   /// Llama a este método una vez al arrancar la app (en main.dart).
   static void init() {
@@ -90,11 +97,24 @@ class ApiService {
 
   /// Intenta renovar el access token usando el refresh token guardado.
   /// Devuelve true si lo logró, false si hay que ir al login.
+  ///
+  /// Si hay un refresh en curso, espera su resultado en lugar de lanzar
+  /// otro POST /auth/refresh (evita race condition con token rotation).
   static Future<bool> _tryRefresh() async {
+    if (_isRefreshing) {
+      return _refreshCompleter!.future;
+    }
+
+    _isRefreshing = true;
+    _refreshCompleter = Completer<bool>();
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString(_keyRefreshToken);
-      if (refreshToken == null) return false;
+      if (refreshToken == null) {
+        _refreshCompleter!.complete(false);
+        return false;
+      }
 
       // Usamos una instancia limpia para evitar que el interceptor
       // vuelva a dispararse en este request de refresh.
@@ -106,13 +126,21 @@ class ApiService {
 
       final newAccess = response.data['accessToken'] as String?;
       final newRefresh = response.data['refreshToken'] as String?;
-      if (newAccess == null || newRefresh == null) return false;
+      if (newAccess == null || newRefresh == null) {
+        _refreshCompleter!.complete(false);
+        return false;
+      }
 
       await saveTokens(accessToken: newAccess, refreshToken: newRefresh);
+      _refreshCompleter!.complete(true);
       return true;
     } catch (_) {
       await clearTokens();
+      _refreshCompleter!.complete(false);
       return false;
+    } finally {
+      _isRefreshing = false;
+      _refreshCompleter = null;
     }
   }
 

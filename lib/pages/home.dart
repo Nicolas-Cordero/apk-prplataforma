@@ -8,9 +8,6 @@ import 'package:carmen_goudie/pages/becarios_page.dart';
 import 'package:carmen_goudie/pages/compromiso_page.dart';
 import 'package:carmen_goudie/widgets/custom_top_bar.dart';
 import 'package:carmen_goudie/widgets/app_background.dart';
-import 'package:carmen_goudie/services/contacto_emergencia_service.dart';
-import 'package:carmen_goudie/services/estudiante_service.dart';
-import 'package:carmen_goudie/services/notification_service.dart';
 import 'package:carmen_goudie/widgets/custom_bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,75 +22,37 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 2; // Pestaña "Yo" por defecto
-  bool _isDarkMode = false; // Estado local del tema
+  bool _isDarkMode = false;
 
-  /// Define todas las pestañas de navegación
-  late final List<TabItem> tabs = [
-    TabItem(
-      icon: Icons.book,
-      label: 'Mis Ramos',
-      color: AppColors.misRamos,
-      page: const MisRamosPage(),
-    ),
-    TabItem(
-      icon: Icons.assignment,
-      label: 'Mis Notas',
-      color: AppColors.misNotas,
-      page: const MisNotasPage(),
-    ),
-    TabItem(
-      icon: Icons.person,
-      label: 'Yo',
-      color: AppColors.yo,
-      page: const PerfilEstudiantePage(),
-    ),
-    TabItem(
-      icon: Icons.group,
-      label: 'Becarios',
-      color: AppColors.becarios,
-      page: const BecariosPage(),
-    ),
-    TabItem(
-      icon: Icons.description,
-      label: 'Compromiso',
-      color: AppColors.compromiso,
-      page: const CompromisoPage(),
-    ),
+  // Incrementa con cada tap. Al cambiar la key, Flutter destruye y recrea
+  // el State de la página → initState() → datos siempre frescos.
+  int _tapCount = 0;
+
+  /// Metadatos de las pestañas (solo para la barra de navegación).
+  static const List<TabItem> _tabMeta = [
+    TabItem(icon: Icons.book,        label: 'Mis Ramos',   color: AppColors.misRamos,   page: SizedBox.shrink()),
+    TabItem(icon: Icons.assignment,  label: 'Mis Notas',   color: AppColors.misNotas,   page: SizedBox.shrink()),
+    TabItem(icon: Icons.person,      label: 'Yo',          color: AppColors.yo,         page: SizedBox.shrink()),
+    TabItem(icon: Icons.group,       label: 'Becarios',    color: AppColors.becarios,   page: SizedBox.shrink()),
+    TabItem(icon: Icons.description, label: 'Compromiso',  color: AppColors.compromiso, page: SizedBox.shrink()),
   ];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      _tapCount++;
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _verificarContactosEmergencia();
-  }
-
-  Future<void> _verificarContactosEmergencia() async {
-    try {
-      final estudiante = await EstudianteService.obtenerPerfilPropio();
-      final contacto = await ContactoEmergenciaService.obtenerPorRut(
-        estudiante.rutEstudiante,
-      );
-
-      final tieneTelefono = (contacto?.telefono.trim().isNotEmpty ?? false);
-      final tieneCorreo = (contacto?.correo.trim().isNotEmpty ?? false);
-
-      if (!tieneTelefono && !tieneCorreo) {
-        await NotificationService.agregarSiNoExiste(
-          code: 'missing_emergency_contacts',
-          title: 'Contactos de emergencia',
-          body: 'Por favor, ingresa información de Contactos de Emergencia',
-          type: 'warning',
-          iconKey: 'emergency_contacts',
-        );
-      }
-    } catch (_) {
-      // No interrumpir la carga por fallos en notificaciones
+  Widget _buildCurrentPage() {
+    final key = ValueKey(_tapCount);
+    switch (_selectedIndex) {
+      case 0:  return MisRamosPage(key: key);
+      case 1:  return MisNotasPage(key: key);
+      case 2:  return PerfilEstudiantePage(key: key);
+      case 3:  return BecariosPage(key: key);
+      case 4:  return CompromisoPage(key: key);
+      default: return PerfilEstudiantePage(key: key);
     }
   }
 
@@ -116,13 +75,13 @@ class _HomePageState extends State<HomePage> {
           onLogout: widget.onLogout,
         ),
       ),
-      body: AppBackground(child: tabs[_selectedIndex].page),
+      body: AppBackground(child: _buildCurrentPage()),
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        colors: tabs.map((tab) => tab.color).toList(),
-        icons: tabs.map((tab) => tab.icon).toList(),
-        labels: tabs.map((tab) => tab.label).toList(),
+        colors: _tabMeta.map((t) => t.color).toList(),
+        icons: _tabMeta.map((t) => t.icon).toList(),
+        labels: _tabMeta.map((t) => t.label).toList(),
       ),
     );
   }
