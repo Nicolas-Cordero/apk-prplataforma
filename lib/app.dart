@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:carmen_goudie/constants/app_colors.dart';
 import 'package:carmen_goudie/themes/app_theme.dart';
 import 'package:carmen_goudie/pages/home.dart';
@@ -23,11 +24,23 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     NotificationService.solicitarPermisos();
     _verificarSesion();
+    _cargarTema();
   }
 
   Future<void> _verificarSesion() async {
     final hasSession = await ApiService.hasSession();
     if (mounted) setState(() => _isAuthenticated = hasSession);
+  }
+
+  Future<void> _cargarTema() async {
+    final prefs = await SharedPreferences.getInstance();
+    final guardado = prefs.getBool('dark_mode') ?? false;
+    if (mounted) setState(() => _isDarkMode = guardado);
+  }
+
+  Future<void> _guardarTema(bool isDark) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dark_mode', isDark);
   }
 
   @override
@@ -52,7 +65,10 @@ class _MyAppState extends State<MyApp> {
 
     if (_isAuthenticated!) {
       return HomePage(
-        onThemeChanged: (isDark) => setState(() => _isDarkMode = isDark),
+        onThemeChanged: (isDark) {
+          setState(() => _isDarkMode = isDark);
+          _guardarTema(isDark);
+        },
         onLogout: () => setState(() => _isAuthenticated = false),
       );
     }

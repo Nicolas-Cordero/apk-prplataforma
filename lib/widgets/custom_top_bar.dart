@@ -292,10 +292,14 @@ class _CustomAppBarState extends State<CustomAppBar>
                       ),
                     ),
                   ),
-                  if (count > 0)
-                    Positioned(
-                      right: -2,
-                      top: -2,
+                  // Positioned siempre presente para no cambiar la estructura
+                  // del Stack (insertar/remover nodos dispara parentDataDirty).
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: count > 0 ? 1.0 : 0.0,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 5,
@@ -318,6 +322,7 @@ class _CustomAppBarState extends State<CustomAppBar>
                         ),
                       ),
                     ),
+                  ),
                 ],
               );
             },

@@ -10,7 +10,7 @@ class Topico {
 
   factory Topico.fromJson(Map<String, dynamic> json) => Topico(
         nombre: json['nombre'] as String?,
-        puntos: (json['puntos'] as List<dynamic>)
+        puntos: (json['puntos'] as List<dynamic>? ?? [])
             .map((p) => p as String)
             .toList(),
       );
@@ -31,10 +31,10 @@ class DocumentoCompromiso {
 
   factory DocumentoCompromiso.fromJson(Map<String, dynamic> json) =>
       DocumentoCompromiso(
-        titulo: json['titulo'] as String,
-        subtitulo: json['subtitulo'] as String,
-        abstract: json['abstract'] as String,
-        topicos: (json['topicos'] as List<dynamic>)
+        titulo:    json['titulo']    as String? ?? '',
+        subtitulo: json['subtitulo'] as String? ?? '',
+        abstract:  json['abstract']  as String? ?? '',
+        topicos: (json['topicos'] as List<dynamic>? ?? [])
             .map((t) => Topico.fromJson(t as Map<String, dynamic>))
             .toList(),
       );

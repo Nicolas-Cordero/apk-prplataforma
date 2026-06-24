@@ -1,15 +1,15 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:carmen_goudie/constants/app_colors.dart';
 import 'package:carmen_goudie/models/app_notification.dart';
 
 /// Servicio para gestionar notificaciones locales
 class NotificationService {
-  static const String _fileName = 'notifications.json';
+  static const String _prefsKey = 'app_notifications';
   static const String _channelId = 'general_notifications';
   static const String _channelName = 'Notificaciones';
   static const String _channelDescription = 'Notificaciones de la aplicacion';
@@ -52,13 +52,11 @@ class NotificationService {
     String? payload,
   ) async {
     // Callback para notificaciones en foreground en iOS
-    // Las notificaciones se mostrarán según DarwinNotificationDetails
   }
 
   static Future<void> solicitarPermisos() async {
     if (kIsWeb) return;
 
-    // Solicitar permisos en iOS
     final ios = _plugin
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
@@ -68,27 +66,20 @@ class NotificationService {
       sound: true,
     );
 
-    // Android 13+ maneja permisos automáticamente
+    // Android 13+ requiere solicitar el permiso POST_NOTIFICATIONS en runtime.
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await android?.requestNotificationsPermission();
   }
 
-  static Future<File> _localFile() async {
-    final dir = Directory('${Directory.systemTemp.path}/test1');
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    return File('${dir.path}/$_fileName');
-  }
+  // ── Almacenamiento (SharedPreferences — compatible con Android, iOS y Web) ──
 
   static Future<List<AppNotification>> _leerLista() async {
-    final file = await _localFile();
-    if (!await file.exists()) {
-      return [];
-    }
-
-    final content = await file.readAsString();
-    if (content.trim().isEmpty) return [];
-
-    final data = jsonDecode(content) as List<dynamic>;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_prefsKey);
+    if (raw == null || raw.trim().isEmpty) return [];
+    final data = jsonDecode(raw) as List<dynamic>;
     return data
         .whereType<Map<String, dynamic>>()
         .map(AppNotification.fromJson)
@@ -96,10 +87,9 @@ class NotificationService {
   }
 
   static Future<void> _guardarLista(List<AppNotification> items) async {
-    final file = await _localFile();
+    final prefs = await SharedPreferences.getInstance();
     final data = items.map((item) => item.toJson()).toList();
-    await file.writeAsString(const JsonEncoder.withIndent('  ').convert(data));
-    _actualizarContadorConLista(items);
+    await prefs.setString(_prefsKey, jsonEncode(data));
   }
 
   static void _actualizarContadorConLista(List<AppNotification> items) {
@@ -112,7 +102,6 @@ class NotificationService {
   }
 
   static int _colorPorIconKey(String? iconKey) {
-    // Retorna el color de la navbar de la página origen
     switch (iconKey) {
       case 'emergency_contacts':
         return AppColors.yo.value;
@@ -174,11 +163,11 @@ class NotificationService {
     }
   }
 
-  /// Obtiene todas las notificaciones (más recientes primero)
+  /// Obtiene todas las notificaciones (más recientes primero).
+  /// No modifica el contador — eso lo gestiona la página de notificaciones.
   static Future<List<AppNotification>> obtenerTodas() async {
     final items = await _leerLista();
     items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    _actualizarContadorConLista(items);
     return items;
   }
 
@@ -191,7 +180,6 @@ class NotificationService {
     String? iconKey,
     int? accentColor,
   }) async {
-    // Si no hay accentColor pero hay iconKey, calcular automáticamente
     final finalAccentColor = accentColor ?? (iconKey != null ? _colorPorIconKey(iconKey) : null);
     final items = await _leerLista();
     final id = DateTime.now().microsecondsSinceEpoch.toString();
@@ -207,6 +195,7 @@ class NotificationService {
     );
     items.add(notification);
     await _guardarLista(items);
+    contador.value += 1;
     await _mostrarNotificacionLocal(notification);
   }
 
@@ -219,7 +208,6 @@ class NotificationService {
     String? iconKey,
     int? accentColor,
   }) async {
-    // Si no hay accentColor pero hay iconKey, calcular automáticamente
     final finalAccentColor = accentColor ?? (iconKey != null ? _colorPorIconKey(iconKey) : null);
     final items = await _leerLista();
     final existe = items.any((item) => item.code == code);
@@ -236,6 +224,7 @@ class NotificationService {
     );
     items.add(notification);
     await _guardarLista(items);
+    contador.value += 1;
     await _mostrarNotificacionLocal(notification);
   }
 

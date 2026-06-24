@@ -33,16 +33,21 @@ class _ProfileHeaderState extends State<ProfileHeader> {
     }
   }
 
-  Widget _initiales() => Center(
-        child: Text(
-          '${widget.nombre[0]}${widget.apellido[0]}',
-          style: const TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+  Widget _initiales() {
+    final n = widget.nombre.isNotEmpty ? widget.nombre[0] : '';
+    final a = widget.apellido.isNotEmpty ? widget.apellido[0] : '';
+    final iniciales = (n + a).toUpperCase();
+    return Center(
+      child: Text(
+        iniciales.isEmpty ? 'CG' : iniciales,
+        style: const TextStyle(
+          fontSize: 48,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
         ),
-      );
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +216,7 @@ class InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: backgroundColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
@@ -225,7 +230,7 @@ class InfoCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(5),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: backgroundColor.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(6),
@@ -236,7 +241,7 @@ class InfoCard extends StatelessWidget {
               size: 14,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Text(
             label,
             textAlign: TextAlign.center,
@@ -249,17 +254,19 @@ class InfoCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: backgroundColor,
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: backgroundColor,
+              ),
+              maxLines: 1,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

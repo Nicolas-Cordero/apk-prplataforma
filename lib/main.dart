@@ -5,7 +5,7 @@ import 'package:carmen_goudie/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  ApiService.init();
+  await ApiService.init();
   await NotificationService.inicializar();
   runApp(const MyApp());
 }

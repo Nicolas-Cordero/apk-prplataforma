@@ -155,39 +155,36 @@ class _PerfilEstudiantePageState extends State<PerfilEstudiantePage> {
     final generacion = est.generacionRel?.anio.toString() ??
         est.generacionId.toString();
 
-    return SizedBox(
-      height: 110,
-      child: GridView.count(
-        crossAxisCount: 3,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.1,
-        children: [
-          const InfoCard(
-            label: 'Prom. Semestre',
-            value: '-',
-            backgroundColor: Color(0xFF16A085),
-            accentColor: Color(0xFF16A085),
-            icon: Icons.trending_up,
-          ),
-          InfoCard(
-            label: 'Comuna Estudio',
-            value: comunaEstudio,
-            backgroundColor: const Color(0xFFE74C3C),
-            accentColor: const Color(0xFFE74C3C),
-            icon: Icons.location_city,
-          ),
-          InfoCard(
-            label: 'Generación',
-            value: generacion,
-            backgroundColor: const Color(0xFFF39C12),
-            accentColor: const Color(0xFFF39C12),
-            icon: Icons.calendar_today,
-          ),
-        ],
-      ),
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.0,
+      children: [
+        const InfoCard(
+          label: 'Prom. Semestre',
+          value: '-',
+          backgroundColor: Color(0xFF16A085),
+          accentColor: Color(0xFF16A085),
+          icon: Icons.trending_up,
+        ),
+        InfoCard(
+          label: 'Comuna Estudio',
+          value: comunaEstudio,
+          backgroundColor: const Color(0xFFE74C3C),
+          accentColor: const Color(0xFFE74C3C),
+          icon: Icons.location_city,
+        ),
+        InfoCard(
+          label: 'Generación',
+          value: generacion,
+          backgroundColor: const Color(0xFFF39C12),
+          accentColor: const Color(0xFFF39C12),
+          icon: Icons.calendar_today,
+        ),
+      ],
     );
   }
 

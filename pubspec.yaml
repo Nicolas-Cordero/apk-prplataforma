@@ -39,7 +39,6 @@ dependencies:
   flutter_svg: ^2.0.6
   dio: ^5.8.0
   shared_preferences: ^2.5.3
-  path_provider: ^2.1.5
   url_launcher: ^6.3.2
 
 dev_dependencies:
@@ -66,7 +65,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/data/
+    - env.json
+    - assets/data/graphics/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

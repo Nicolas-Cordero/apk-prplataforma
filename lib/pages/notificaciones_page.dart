@@ -18,6 +18,8 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
   void initState() {
     super.initState();
     _notificacionesFuture = NotificationService.obtenerTodas();
+    // El usuario abrió la página: limpiar el badge de la campana.
+    NotificationService.contador.value = 0;
   }
 
   Future<void> _recargar() async {

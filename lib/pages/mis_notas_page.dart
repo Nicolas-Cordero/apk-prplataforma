@@ -477,7 +477,7 @@ class _MisNotasPageState extends State<MisNotasPage> {
                 Expanded(
                   child: Text(
                     ramo.notaFinal != null
-                        ? 'Nota final: ${ramo.notaFinal!.toStringAsFixed(2)}'
+                        ? 'Nota final: ${ramo.notaFinal!.toStringAsFixed(1)}'
                         : 'Nota final no registrada',
                     style: TextStyle(
                       color: ramo.notaFinal != null

@@ -1,34 +1,54 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String _baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://192.168.100.13:3001',
-  );
-
   static const String _keyAccessToken = 'access_token';
   static const String _keyRefreshToken = 'refresh_token';
 
-  static final Dio _dio = Dio(BaseOptions(
-    baseUrl: _baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-    headers: {'Content-Type': 'application/json'},
-  ));
+  // Inicializado en init() tras leer env.json.
+  static late String _baseUrl;
+  static late Dio _dio;
 
   static bool _interceptorMounted = false;
 
-  // Mutex para serializar refreshes concurrentes: solo uno corre a la vez,
-  // los demás esperan su resultado en lugar de disparar otro POST /auth/refresh.
+  // Mutex para serializar refreshes concurrentes.
   static bool _isRefreshing = false;
   static Completer<bool>? _refreshCompleter;
 
-  /// Llama a este método una vez al arrancar la app (en main.dart).
-  static void init() {
+  /// Lee la URL base desde el asset `env.json` y monta el cliente HTTP.
+  /// Debe ser llamado con `await` en main() antes de runApp().
+  /// Copia `env.example.json` → `env.json` y completa la URL antes de correr.
+  static Future<void> init() async {
     if (_interceptorMounted) return;
+
+    // Leer env.json en runtime — funciona sin flags extra en flutter run.
+    String baseUrl = '';
+    try {
+      final raw = await rootBundle.loadString('env.json');
+      final env = jsonDecode(raw) as Map<String, dynamic>;
+      baseUrl = env['API_BASE_URL'] as String? ?? '';
+    } catch (_) {
+      // env.json no encontrado — el assert de abajo lo reporta en debug.
+    }
+
+    assert(
+      baseUrl.isNotEmpty,
+      '\n\n⚠️  API_BASE_URL no definida.\n'
+      'Copia env.example.json → env.json y completa la URL del backend.\n',
+    );
+
+    _baseUrl = baseUrl;
+    _dio = Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      headers: {'Content-Type': 'application/json'},
+    ));
+
     _interceptorMounted = true;
 
     _dio.interceptors.add(
@@ -41,11 +61,9 @@ class ApiService {
           handler.next(options);
         },
         onError: (error, handler) async {
-          // Si el servidor devuelve 401 intentamos renovar el token.
           if (error.response?.statusCode == 401) {
             final refreshed = await _tryRefresh();
             if (refreshed) {
-              // Reintentar la request original con el nuevo token.
               final opts = error.requestOptions;
               final token = await getAccessToken();
               opts.headers['Authorization'] = 'Bearer $token';
@@ -95,11 +113,6 @@ class ApiService {
     return token != null && token.isNotEmpty;
   }
 
-  /// Intenta renovar el access token usando el refresh token guardado.
-  /// Devuelve true si lo logró, false si hay que ir al login.
-  ///
-  /// Si hay un refresh en curso, espera su resultado en lugar de lanzar
-  /// otro POST /auth/refresh (evita race condition con token rotation).
   static Future<bool> _tryRefresh() async {
     if (_isRefreshing) {
       return _refreshCompleter!.future;
@@ -116,8 +129,6 @@ class ApiService {
         return false;
       }
 
-      // Usamos una instancia limpia para evitar que el interceptor
-      // vuelva a dispararse en este request de refresh.
       final plainDio = Dio(BaseOptions(baseUrl: _baseUrl));
       final response = await plainDio.post(
         '/auth/refresh',

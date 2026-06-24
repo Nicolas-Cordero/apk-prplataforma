@@ -63,15 +63,20 @@ class CustomBottomNavBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Indicador superior animado con bordes redondeados
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
+          // Indicador superior: tamaño fijo, solo se anima la opacidad.
+          // AnimatedContainer con size 0→N dentro de Flexible dispara re-layout
+          // durante la animación y corrompe el parentData del árbol de semántica.
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
-            height: isSelected ? 4 : 0,
-            width: isSelected ? 40 : 0,
-            decoration: BoxDecoration(
-              color: isSelected ? tabColor : Colors.transparent,
-              borderRadius: BorderRadius.circular(2),
+            opacity: isSelected ? 1.0 : 0.0,
+            child: Container(
+              height: 4,
+              width: 40,
+              decoration: BoxDecoration(
+                color: tabColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           const SizedBox(height: 4),
